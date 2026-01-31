@@ -5,21 +5,23 @@ import { OnboardingContainer } from '@/components/onboarding/OnboardingContainer
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
 import { useOnboardingStore } from '@/stores/onboardingStore';
+import { useHealthData } from '@/hooks/useHealthData';
 import { OnboardingTheme } from '@/constants/theme';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function VitalSyncScreen() {
   const router = useRouter();
   const { setHealthConnected, setHeight, setWeight, markStepCompleted } = useOnboardingStore();
+  const { syncHealthData } = useHealthData();
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
 
   const handleConnect = async () => {
     setLoading(true);
     
-    // TODO: Implement actual Apple Health integration
-    // For now, simulate connection
-    setTimeout(() => {
+    try {
+      const healthData = await syncHealthData();
+      
       setConnected(true);
       setHealthConnected(true, {
         heartRate: true,
@@ -31,14 +33,20 @@ export default function VitalSyncScreen() {
         weight: true,
       });
       
-      // Simulate fetching height and weight
-      // In production, these would come from HealthKit
-      setHeight({ cm: 165 }, true);
-      setWeight({ kg: 60 }, true);
+      // Set height and weight from HealthKit
+      if (healthData.height) {
+        setHeight(healthData.height, true);
+      }
+      if (healthData.weight) {
+        setWeight(healthData.weight, true);
+      }
       
       setLoading(false);
       Alert.alert('Connected', 'Apple Health connected successfully!');
-    }, 1500);
+    } catch (error) {
+      setLoading(false);
+      Alert.alert('Error', 'Failed to connect to Apple Health');
+    }
   };
 
   const handleSkip = () => {

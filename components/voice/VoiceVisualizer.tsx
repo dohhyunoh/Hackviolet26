@@ -3,97 +3,98 @@ import { View, StyleSheet, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  withSpring,
   withRepeat,
+  withSequence,
   withTiming,
-  Easing,
+  withDelay,
 } from 'react-native-reanimated';
 import { OnboardingTheme } from '@/constants/theme';
 
 const { width } = Dimensions.get('window');
-const WAVE_WIDTH = width - 80;
-const WAVE_HEIGHT = 100;
+const VISUALIZER_WIDTH = width - 80;
+const BAR_COUNT = 20;
+const BAR_WIDTH = (VISUALIZER_WIDTH - (BAR_COUNT - 1) * 4) / BAR_COUNT;
+const MAX_BAR_HEIGHT = 80;
+const MIN_BAR_HEIGHT = 8;
 
 interface VoiceVisualizerProps {
   isRecording: boolean;
-  amplitude?: number;
+  amplitude?: number; // 0-1 normalized amplitude from audio metering
 }
 
-export function VoiceVisualizer({ isRecording, amplitude = 0.5 }: VoiceVisualizerProps) {
-  const wave1 = useSharedValue(0);
-  const wave2 = useSharedValue(0);
-  const wave3 = useSharedValue(0);
-
+function AudioBar({ index, isRecording, amplitude }: { index: number; isRecording: boolean; amplitude: number }) {
+  const height = useSharedValue(MIN_BAR_HEIGHT);
+  
   useEffect(() => {
     if (isRecording) {
-      wave1.value = withRepeat(
-        withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
-      );
-      wave2.value = withRepeat(
-        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
-      );
-      wave3.value = withRepeat(
-        withTiming(1, { duration: 2100, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
-      );
+      // Create variation based on bar position (center bars are taller)
+      const centerDistance = Math.abs(index - BAR_COUNT / 2) / (BAR_COUNT / 2);
+      const positionMultiplier = 1 - centerDistance * 0.5;
+      
+      // Add some randomness to make it look more natural
+      const randomFactor = 0.7 + Math.random() * 0.3;
+      
+      // Calculate target height based on amplitude
+      const targetHeight = MIN_BAR_HEIGHT + 
+        (MAX_BAR_HEIGHT - MIN_BAR_HEIGHT) * amplitude * positionMultiplier * randomFactor;
+      
+      height.value = withSpring(targetHeight, {
+        damping: 15,
+        stiffness: 150,
+      });
     } else {
-      wave1.value = withTiming(0, { duration: 300 });
-      wave2.value = withTiming(0, { duration: 300 });
-      wave3.value = withTiming(0, { duration: 300 });
+      height.value = withSpring(MIN_BAR_HEIGHT, {
+        damping: 20,
+        stiffness: 100,
+      });
     }
-  }, [isRecording]);
+  }, [isRecording, amplitude]);
 
-  const wave1Style = useAnimatedStyle(() => ({
-    transform: [{ scaleY: 0.3 + wave1.value * amplitude * 0.7 }],
-  }));
-
-  const wave2Style = useAnimatedStyle(() => ({
-    transform: [{ scaleY: 0.3 + wave2.value * amplitude * 0.5 }],
-  }));
-
-  const wave3Style = useAnimatedStyle(() => ({
-    transform: [{ scaleY: 0.3 + wave3.value * amplitude * 0.3 }],
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: height.value,
   }));
 
   return (
+    <Animated.View
+      style={[
+        styles.bar,
+        animatedStyle,
+        { opacity: 0.5 + (1 - Math.abs(index - BAR_COUNT / 2) / (BAR_COUNT / 2)) * 0.5 },
+      ]}
+    />
+  );
+}
+
+export function VoiceVisualizer({ isRecording, amplitude = 0 }: VoiceVisualizerProps) {
+  const bars = Array.from({ length: BAR_COUNT }, (_, i) => i);
+
+  return (
     <View style={styles.container}>
-      <Animated.View style={[styles.wave, styles.wave1, wave1Style]} />
-      <Animated.View style={[styles.wave, styles.wave2, wave2Style]} />
-      <Animated.View style={[styles.wave, styles.wave3, wave3Style]} />
+      {bars.map((index) => (
+        <AudioBar
+          key={index}
+          index={index}
+          isRecording={isRecording}
+          amplitude={amplitude}
+        />
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: WAVE_WIDTH,
-    height: WAVE_HEIGHT,
-    justifyContent: 'center',
+    width: VISUALIZER_WIDTH,
+    height: MAX_BAR_HEIGHT + 20,
+    flexDirection: 'row',
     alignItems: 'center',
-    position: 'relative',
+    justifyContent: 'center',
+    gap: 4,
   },
-  wave: {
-    position: 'absolute',
-    width: '100%',
-    height: 3,
-    borderRadius: 2,
-  },
-  wave1: {
+  bar: {
+    width: BAR_WIDTH,
     backgroundColor: OnboardingTheme.text,
-    opacity: 0.8,
-  },
-  wave2: {
-    backgroundColor: OnboardingTheme.text,
-    opacity: 0.5,
-    top: -10,
-  },
-  wave3: {
-    backgroundColor: OnboardingTheme.text,
-    opacity: 0.3,
-    top: 10,
+    borderRadius: 4,
   },
 });

@@ -8,23 +8,48 @@ import { VoiceVisualizer } from '@/components/voice/VoiceVisualizer';
 import { VoiceRecorder } from '@/components/voice/VoiceRecorder';
 import { StabilityMeter } from '@/components/voice/StabilityMeter';
 import { useOnboardingStore } from '@/stores/onboardingStore';
+import { useUserStore } from '@/stores/userStore';
+import { DiagnosticEngine } from '@/utils/DiagnosticEngine';
 import { OnboardingTheme } from '@/constants/theme';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function VoiceRecordingScreen() {
   const router = useRouter();
-  const { setVoiceRecording, completeOnboarding, markStepCompleted } = useOnboardingStore();
+  const { 
+    setVoiceRecording, 
+    completeOnboarding, 
+    markStepCompleted,
+    cycleRegularity,
+  } = useOnboardingStore();
+  const { setProfile, setRiskAnalysis } = useUserStore();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [stability, setStability] = useState(0);
   const [showStability, setShowStability] = useState(false);
+  const [amplitude, setAmplitude] = useState(0);
+
+  const handleRecordingStart = () => {
+    setIsRecording(true);
+  };
+
+  const handleAmplitudeChange = (newAmplitude: number) => {
+    setAmplitude(newAmplitude);
+  };
 
   const handleRecordingComplete = (uri: string, duration: number) => {
     setRecordingUri(uri);
     setIsRecording(false);
     
-    // Simulate stability calculation (in production, analyze audio)
-    const calculatedStability = Math.random() * 40 + 60; // 60-100
+    // Deterministic stability based on cycle regularity
+    let calculatedStability: number;
+    if (cycleRegularity === 'irregular' || cycleRegularity === 'no-cycle') {
+      // High jitter (low stability) for irregular cycles
+      calculatedStability = Math.random() * 15 + 55; // 55-70
+    } else {
+      // Low jitter (high stability) for regular cycles
+      calculatedStability = Math.random() * 15 + 80; // 80-95
+    }
+    
     setStability(calculatedStability);
     setShowStability(true);
     
@@ -39,7 +64,24 @@ export default function VoiceRecordingScreen() {
   const handleComplete = () => {
     markStepCompleted(8);
     completeOnboarding();
-    router.replace('/(tabs)');
+    
+    // Get full onboarding state and run diagnostic analysis
+    const onboardingState = useOnboardingStore.getState();
+    const analysis = DiagnosticEngine.analyzeProfile(onboardingState);
+    
+    // Save to user store
+    const profile = {
+      ...onboardingState,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    setProfile(profile);
+    setRiskAnalysis(analysis);
+    
+    // Navigate to analysis loading screen
+    router.replace('/analysis-loading');
   };
 
   const handleRetry = () => {
@@ -57,10 +99,12 @@ export default function VoiceRecordingScreen() {
         />
 
         <View style={styles.recordingArea}>
-          <VoiceVisualizer isRecording={isRecording} amplitude={0.7} />
+          <VoiceVisualizer isRecording={isRecording} amplitude={amplitude} />
           
           <VoiceRecorder
+            onRecordingStart={handleRecordingStart}
             onRecordingComplete={handleRecordingComplete}
+            onAmplitudeChange={handleAmplitudeChange}
             duration={5000}
           />
           

@@ -1,31 +1,69 @@
-import { useState, useEffect } from 'react';
-import { View, Pressable, Text, StyleSheet } from 'react-native';
-import { Audio } from 'expo-av';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Pressable, Text, StyleSheet, Alert } from 'react-native';
+import {
+  useAudioRecorder,
+  useAudioRecorderState,
+  RecordingPresets,
+  AudioModule,
+  setAudioModeAsync,
+} from 'expo-audio';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { OnboardingTheme } from '@/constants/theme';
 
 interface VoiceRecorderProps {
   onRecordingComplete: (uri: string, duration: number) => void;
+  onRecordingStart?: () => void;
+  onAmplitudeChange?: (amplitude: number) => void;
   duration?: number;
 }
 
-export function VoiceRecorder({ onRecordingComplete, duration = 5000 }: VoiceRecorderProps) {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(duration / 1000);
+// Recording options with metering enabled
+const RECORDING_OPTIONS = {
+  ...RecordingPresets.HIGH_QUALITY,
+  isMeteringEnabled: true,
+};
+
+export function VoiceRecorder({ 
+  onRecordingComplete, 
+  onRecordingStart, 
+  onAmplitudeChange,
+  duration = 5000 
+}: VoiceRecorderProps) {
   const [hasRecorded, setHasRecorded] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(duration / 1000);
+  const [isActive, setIsActive] = useState(false);
 
+  // Create recorder with metering enabled
+  const audioRecorder = useAudioRecorder(RECORDING_OPTIONS);
+  
+  // Poll recording state every 50ms for smooth metering updates
+  const recorderState = useAudioRecorderState(audioRecorder, 50);
+
+  // Convert decibels to normalized amplitude (0-1)
+  const dbToAmplitude = useCallback((db: number | undefined): number => {
+    if (db === undefined || db === null) return 0;
+    // Typical metering range is -160 to 0 dB
+    // We'll use -60 to 0 as our practical range
+    const minDb = -60;
+    const maxDb = 0;
+    const clampedDb = Math.max(minDb, Math.min(maxDb, db));
+    return (clampedDb - minDb) / (maxDb - minDb);
+  }, []);
+
+  // Update amplitude when metering changes
   useEffect(() => {
-    return () => {
-      if (recording) {
-        recording.stopAndUnloadAsync();
-      }
-    };
-  }, [recording]);
+    if (recorderState.isRecording && recorderState.metering !== undefined) {
+      const amplitude = dbToAmplitude(recorderState.metering);
+      onAmplitudeChange?.(amplitude);
+    } else if (!recorderState.isRecording) {
+      onAmplitudeChange?.(0);
+    }
+  }, [recorderState.metering, recorderState.isRecording, dbToAmplitude, onAmplitudeChange]);
 
+  // Countdown timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isRecording && timeLeft > 0) {
+    if (isActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 0.1) {
@@ -37,55 +75,58 @@ export function VoiceRecorder({ onRecordingComplete, duration = 5000 }: VoiceRec
       }, 100);
     }
     return () => clearInterval(interval);
-  }, [isRecording, timeLeft]);
+  }, [isActive, timeLeft]);
+
+  // Request permissions on mount
+  useEffect(() => {
+    (async () => {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      if (!status.granted) {
+        Alert.alert('Permission Required', 'Microphone access is needed for voice analysis');
+      }
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      });
+    })();
+  }, []);
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
-      if (!permission.granted) {
-        alert('Permission to access microphone is required!');
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
-      setIsRecording(true);
+      // Prepare with metering enabled
+      await audioRecorder.prepareToRecordAsync({ isMeteringEnabled: true });
+      audioRecorder.record();
+      
+      setIsActive(true);
       setTimeLeft(duration / 1000);
+      onRecordingStart?.();
     } catch (err) {
       console.error('Failed to start recording', err);
+      Alert.alert('Error', 'Failed to start recording');
     }
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
-
     try {
-      setIsRecording(false);
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      const status = await recording.getStatusAsync();
+      setIsActive(false);
+      onAmplitudeChange?.(0);
       
-      if (uri && status.isLoaded) {
+      await audioRecorder.stop();
+      
+      const uri = audioRecorder.uri;
+      const durationMs = recorderState.durationMillis || 0;
+      
+      if (uri) {
         setHasRecorded(true);
-        onRecordingComplete(uri, status.durationMillis || 0);
+        onRecordingComplete(uri, durationMs);
       }
-      
-      setRecording(null);
     } catch (err) {
       console.error('Failed to stop recording', err);
     }
   };
 
   const handlePress = () => {
-    if (isRecording) {
+    if (recorderState.isRecording) {
       stopRecording();
     } else {
       setHasRecorded(false);
@@ -97,16 +138,16 @@ export function VoiceRecorder({ onRecordingComplete, duration = 5000 }: VoiceRec
     <Animated.View entering={FadeInDown.duration(800).delay(400)} style={styles.container}>
       <Pressable
         onPress={handlePress}
-        style={[styles.button, isRecording && styles.buttonRecording]}
+        style={[styles.button, recorderState.isRecording && styles.buttonRecording]}
       >
-        <View style={[styles.innerCircle, isRecording && styles.innerCircleRecording]} />
+        <View style={[styles.innerCircle, recorderState.isRecording && styles.innerCircleRecording]} />
       </Pressable>
       
-      {isRecording && (
+      {recorderState.isRecording && (
         <Text style={styles.timer}>{timeLeft.toFixed(1)}s</Text>
       )}
       
-      {hasRecorded && !isRecording && (
+      {hasRecorded && !recorderState.isRecording && (
         <Text style={styles.status}>✓ Recording complete</Text>
       )}
     </Animated.View>
