@@ -9,7 +9,7 @@ export default function WelcomeScreen() {
   const router = useRouter();
 
   const handleGetStarted = () => {
-    router.replace('/(tabs)');
+    router.push('/onboarding/name');
   };
 
   return (
@@ -23,7 +23,7 @@ export default function WelcomeScreen() {
           entering={FadeInUp.duration(800).delay(200)}
           style={styles.textContainer}
         >
-          <Text style={styles.title}>Welcome to Lunaflow</Text>
+          <Text style={styles.title}>LunaFlow</Text>
           <Text style={styles.description}>
             Your body, decoded
           </Text>

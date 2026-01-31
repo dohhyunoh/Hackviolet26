@@ -51,3 +51,36 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+export const OnboardingTheme = {
+  background: '#1a0b2e',
+  text: '#ffffff',
+  textSecondary: 'rgba(255, 255, 255, 0.8)',
+  buttonBackground: '#ffffff',
+  buttonText: '#1a0b2e',
+  inputBackground: 'rgba(255, 255, 255, 0.1)',
+  inputBorder: 'rgba(255, 255, 255, 0.2)',
+  inputBorderActive: '#ffffff',
+  progressDot: 'rgba(255, 255, 255, 0.3)',
+  progressDotActive: '#ffffff',
+  selectionButton: 'rgba(255, 255, 255, 0.1)',
+  selectionButtonActive: '#ffffff',
+  selectionButtonBorder: 'rgba(255, 255, 255, 0.3)',
+  selectionButtonBorderActive: '#ffffff',
+  spacing: {
+    horizontal: 40,
+    topPadding: 120,
+    bottomPadding: 80,
+  },
+  fontSize: {
+    title: 40,
+    subtitle: 20,
+    body: 18,
+    button: 18,
+  },
+  borderRadius: {
+    button: 30,
+    input: 16,
+    selection: 16,
+  },
+};
