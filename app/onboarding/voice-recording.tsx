@@ -6,6 +6,7 @@ import { VoiceRecorder } from '@/components/voice/VoiceRecorder';
 import { VoiceVisualizer } from '@/components/voice/VoiceVisualizer';
 import { OnboardingTheme } from '@/constants/theme';
 import { useOnboardingStore } from '@/stores/onboardingStore';
+import { useRecordingStore } from '@/stores/recordingStore';
 import { useUserStore } from '@/stores/userStore';
 import { DiagnosticEngine } from '@/utils/DiagnosticEngine';
 import { useRouter } from 'expo-router';
@@ -15,12 +16,13 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function VoiceRecordingScreen() {
   const router = useRouter();
-  const { 
-    setVoiceRecording, 
-    completeOnboarding, 
+  const {
+    setVoiceRecording,
+    completeOnboarding,
     markStepCompleted,
   } = useOnboardingStore();
-  
+
+  const { addRecording } = useRecordingStore();
   const { setProfile, setRiskAnalysis } = useUserStore();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
@@ -81,18 +83,30 @@ export default function VoiceRecordingScreen() {
   const handleRecordingComplete = (uri: string, duration: number) => {
     setRecordingUri(uri);
     setIsRecording(false);
-    
+
     // Calculate REAL stability based on the user's actual input
     const realStability = calculateStabilityScore(amplitudeHistory.current, duration);
-    
+
     setStability(realStability);
     setShowStability(true);
-    
+
+    const timestamp = new Date().toISOString();
+
+    // Save to onboarding store
     setVoiceRecording({
       uri,
       duration,
       stability: realStability,
-      timestamp: new Date().toISOString(),
+      timestamp,
+    });
+
+    // Also save to recording store so it counts as the first recording
+    addRecording({
+      uri,
+      duration,
+      stability: realStability,
+      timestamp,
+      notes: 'Baseline recording from onboarding',
     });
   };
 

@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "lunaflow",
-    "slug": "lunaflow",
+    "name": "clarity",
+    "slug": "clarity",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "lunaflow",
+    "scheme": "clarity",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Lunaflow needs access to your microphone to record voice samples for hormonal analysis.",
-        "NSHealthShareUsageDescription": "Lunaflow needs access to your health data to provide personalized insights.",
-        "NSHealthUpdateUsageDescription": "Lunaflow needs to update your health data."
+        "NSMicrophoneUsageDescription": "Clarity needs access to your microphone to record voice samples for hormonal analysis.",
+        "NSHealthShareUsageDescription": "Clarity needs access to your health data to provide personalized insights.",
+        "NSHealthUpdateUsageDescription": "Clarity needs to update your health data."
       },
       "bundleIdentifier": "com.anonymous.lunaflow"
     },
@@ -51,8 +51,8 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "healthSharePermission": "Allow LunaFlow to read your health data for cycle tracking",
-          "healthUpdatePermission": "Allow LunaFlow to update your health data"
+          "healthSharePermission": "Allow Clarity to read your health data for cycle tracking",
+          "healthUpdatePermission": "Allow Clarity to update your health data"
         }
       ]
     ],
