@@ -108,6 +108,8 @@ export default function BodyCompositionScreen() {
               ? 'Values pre-filled from Apple Health. Edit if needed.'
               : 'Help us understand your baseline health metrics'
           }
+          titleFont="Outfit"
+          descriptionFont="ZillaSlab"
         />
 
         <View style={styles.form}>
@@ -197,6 +199,7 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 20,
+    marginBottom: 40,
   },
   inputsContainer: {
     gap: 20,

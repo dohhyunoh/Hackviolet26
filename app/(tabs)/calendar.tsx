@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -277,11 +277,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
+    fontFamily: 'Outfit',
     fontWeight: '700',
     color: '#ffffff',
   },
   subtitle: {
     fontSize: 16,
+    fontFamily: 'ZillaSlab',
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
   },

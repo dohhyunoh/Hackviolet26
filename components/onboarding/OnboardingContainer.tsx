@@ -1,5 +1,6 @@
-import { View, StyleSheet, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, Pressable } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { OnboardingTheme } from '@/constants/theme';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 
@@ -39,10 +40,9 @@ export function OnboardingContainer({
   };
 
   return (
-    <ImageBackground
-      source={require('@/assets/images/gradient-background.png')}
+    <LinearGradient
+      colors={['#a18cd1', '#fbc2eb']}
       style={styles.container}
-      resizeMode="cover"
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -79,14 +79,13 @@ export function OnboardingContainer({
           <View style={styles.content}>{children}</View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: OnboardingTheme.background,
   },
   keyboardView: {
     flex: 1,

@@ -1,12 +1,12 @@
-import { View, StyleSheet, Text, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
 import { OnboardingContainer } from '@/components/onboarding/OnboardingContainer';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
-import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
-import { useOnboardingStore } from '@/stores/onboardingStore';
-import { useHealthData } from '@/hooks/useHealthData';
 import { OnboardingTheme } from '@/constants/theme';
+import { useHealthData } from '@/hooks/useHealthData';
+import { useOnboardingStore } from '@/stores/onboardingStore';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function VitalSyncScreen() {
@@ -65,6 +65,8 @@ export default function VitalSyncScreen() {
         <OnboardingHeader
           title="Bio-Bridge"
           description="Connect your health data for personalized insights"
+          titleFont="Outfit"
+          descriptionFont="ZillaSlab"
         />
 
         <Animated.View entering={FadeInDown.duration(800).delay(300)} style={styles.infoBox}>
@@ -88,7 +90,7 @@ export default function VitalSyncScreen() {
         {!connected ? (
           <>
             <OnboardingButton
-              title="Connect Apple Health"
+              title="Connect to Apple Health"
               onPress={handleConnect}
               loading={loading}
               delay={400}
@@ -136,7 +138,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   successBox: {
-    backgroundColor: 'rgba(76, 217, 100, 0.2)',
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
     borderRadius: OnboardingTheme.borderRadius.input,
     padding: 20,
     alignItems: 'center',
@@ -144,7 +146,7 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#4CD964',
+    color: '#10b981',
   },
   buttons: {
     gap: 16,

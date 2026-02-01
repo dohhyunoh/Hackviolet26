@@ -1,16 +1,16 @@
-import { View, StyleSheet, Text } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
 import { OnboardingContainer } from '@/components/onboarding/OnboardingContainer';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
-import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
-import { VoiceVisualizer } from '@/components/voice/VoiceVisualizer';
-import { VoiceRecorder } from '@/components/voice/VoiceRecorder';
 import { StabilityMeter } from '@/components/voice/StabilityMeter';
+import { VoiceRecorder } from '@/components/voice/VoiceRecorder';
+import { VoiceVisualizer } from '@/components/voice/VoiceVisualizer';
+import { OnboardingTheme } from '@/constants/theme';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useUserStore } from '@/stores/userStore';
 import { DiagnosticEngine } from '@/utils/DiagnosticEngine';
-import { OnboardingTheme } from '@/constants/theme';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function VoiceRecordingScreen() {
@@ -95,7 +95,9 @@ export default function VoiceRecordingScreen() {
       <View style={styles.content}>
         <OnboardingHeader
           title="Acoustic Lab"
-          description="Hold a steady 'Ahhh' as if you are singing a single note. Stay in your normal speaking range—don't try to go high or low."
+          description="Hold a steady 'Ahhh' as if you are singing a single note. Stay in your normal speaking range- don't try to go high or low."
+          titleFont="Outfit"
+          descriptionFont="ZillaSlab"
         />
 
         <View style={styles.recordingArea}>

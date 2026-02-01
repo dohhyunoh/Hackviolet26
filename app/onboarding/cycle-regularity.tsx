@@ -1,11 +1,11 @@
-import { View, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { SelectionGroup } from '@/components/form/SelectionGroup';
+import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
 import { OnboardingContainer } from '@/components/onboarding/OnboardingContainer';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
-import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
-import { SelectionGroup } from '@/components/form/SelectionGroup';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { CycleRegularity } from '@/types/onboarding';
+import { useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 const cycleOptions = [
   {
@@ -16,7 +16,7 @@ const cycleOptions = [
   {
     value: 'irregular',
     label: 'Irregular (Oligomenorrhea)',
-    description: "I have periods, but they're unpredictable (fewer than 9 periods/year)",
+    description: "I have periods, but they're unpredictable (fewer than 9 periods per year)",
   },
   {
     value: 'no-cycle',
@@ -39,13 +39,16 @@ export default function CycleRegularityScreen() {
       <View style={styles.content}>
         <OnboardingHeader
           title="How would you describe your menstrual cycle?"
+          titleFont="Outfit"
         />
 
-        <SelectionGroup
-          options={cycleOptions}
-          selectedValue={cycleRegularity}
-          onSelect={(value) => setCycleRegularity(value as CycleRegularity)}
-        />
+        <View style={styles.selectionGroup}>
+          <SelectionGroup
+            options={cycleOptions}
+            selectedValue={cycleRegularity}
+            onSelect={(value) => setCycleRegularity(value as CycleRegularity)}
+          />
+        </View>
       </View>
 
       <OnboardingButton
@@ -60,5 +63,8 @@ export default function CycleRegularityScreen() {
 const styles = StyleSheet.create({
   content: {
     gap: 40,
+  },
+  selectionGroup: {
+    marginBottom: 40,
   },
 });

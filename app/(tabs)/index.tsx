@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useUserStore } from '@/stores/userStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 const GRAPH_WIDTH = width - 40;
@@ -36,11 +36,15 @@ const generateMockJitterData = (riskLevel: string) => {
 function VocalJitterGraph({ data }: { data: number[] }) {
   const maxValue = Math.max(...data, 3); // At least 3% for scale
   const minValue = 0;
+  const paddingX = 8; // Padding on left and right
+  const paddingY = 8; // Padding on top and bottom
+  const graphInnerWidth = GRAPH_WIDTH - (paddingX * 2);
+  const graphInnerHeight = GRAPH_HEIGHT - (paddingY * 2);
   
   // Generate SVG path
   const points = data.map((value, index) => {
-    const x = (index / (data.length - 1)) * GRAPH_WIDTH;
-    const y = GRAPH_HEIGHT - ((value - minValue) / (maxValue - minValue)) * GRAPH_HEIGHT;
+    const x = paddingX + (index / (data.length - 1)) * graphInnerWidth;
+    const y = paddingY + (graphInnerHeight - ((value - minValue) / (maxValue - minValue)) * graphInnerHeight);
     return { x, y, value };
   });
   
@@ -56,11 +60,11 @@ function VocalJitterGraph({ data }: { data: number[] }) {
       <Svg width={GRAPH_WIDTH} height={GRAPH_HEIGHT}>
         {/* Grid lines */}
         {[0, 1, 2, 3].map((value) => {
-          const y = GRAPH_HEIGHT - ((value - minValue) / (maxValue - minValue)) * GRAPH_HEIGHT;
+          const y = paddingY + (graphInnerHeight - ((value - minValue) / (maxValue - minValue)) * graphInnerHeight);
           return (
             <Path
               key={value}
-              d={`M 0 ${y} L ${GRAPH_WIDTH} ${y}`}
+              d={`M ${paddingX} ${y} L ${GRAPH_WIDTH - paddingX} ${y}`}
               stroke="rgba(161, 140, 209, 0.1)"
               strokeWidth="1"
             />
@@ -90,7 +94,7 @@ function VocalJitterGraph({ data }: { data: number[] }) {
         ))}
       </Svg>
       
-      {/* Y-axis labels */}
+      {/* Y-axis labels inside graph */}
       <View style={styles.yAxisLabels}>
         {[3, 2, 1, 0].map((value) => (
           <Text key={value} style={styles.axisLabel}>
@@ -103,7 +107,7 @@ function VocalJitterGraph({ data }: { data: number[] }) {
 }
 
 export default function HomeScreen() {
-  const { riskAnalysis } = useUserStore();
+  const { riskAnalysis, profile } = useUserStore();
   
   // Generate mock data based on risk level
   const jitterData = generateMockJitterData(riskAnalysis?.riskLevel || 'LOW');
@@ -115,6 +119,20 @@ export default function HomeScreen() {
   
   // Use consistent purple gradient for all risk levels
   const gradient = ['#a18cd1', '#fbc2eb'];
+  
+  // Get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    const userName = profile?.name || 'there';
+    
+    if (hour < 12) {
+      return `Good morning, ${userName}`;
+    } else if (hour < 18) {
+      return `Good afternoon, ${userName}`;
+    } else {
+      return `Good evening, ${userName}`;
+    }
+  };
 
   return (
     <LinearGradient colors={gradient} style={styles.container}>
@@ -125,7 +143,7 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
-          <Text style={styles.greeting}>Welcome back</Text>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
           <Text style={styles.date}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
@@ -198,10 +216,12 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 32,
     fontWeight: '700',
+    fontFamily: 'Outfit',
     color: '#ffffff',
   },
   date: {
     fontSize: 16,
+    fontFamily: 'ZillaSlab',
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
   },
@@ -253,14 +273,19 @@ const styles = StyleSheet.create({
   },
   yAxisLabels: {
     position: 'absolute',
-    left: -40,
+    left: 2,
     top: 0,
     height: GRAPH_HEIGHT,
     justifyContent: 'space-between',
   },
   axisLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
+    fontWeight: '600',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   graphHint: {
     fontSize: 14,

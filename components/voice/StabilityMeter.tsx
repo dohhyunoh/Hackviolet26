@@ -11,8 +11,8 @@ export function StabilityMeter({ stability, visible }: StabilityMeterProps) {
   if (!visible) return null;
 
   const getStabilityColor = (value: number) => {
-    if (value >= 70) return '#4CD964';
-    if (value >= 40) return '#FFCC00';
+    if (value >= 70) return '#059669';
+    if (value >= 40) return '#f59e0b';
     return '#FF3B30';
   };
 

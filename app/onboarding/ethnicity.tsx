@@ -34,13 +34,17 @@ export default function EthnicityScreen() {
         <OnboardingHeader
           title="Select your ethnicity"
           description="This helps calibrate your baseline vocal norms for more accurate analysis"
+          titleFont="Outfit"
+          descriptionFont="ZillaSlab"
         />
 
-        <SelectionGroup
-          options={ethnicityOptions}
-          selectedValue={ethnicity}
-          onSelect={(value) => setEthnicity(value as Ethnicity)}
-        />
+        <View style={styles.selectionGroup}>
+          <SelectionGroup
+            options={ethnicityOptions}
+            selectedValue={ethnicity}
+            onSelect={(value) => setEthnicity(value as Ethnicity)}
+          />
+        </View>
       </View>
 
       <OnboardingButton
@@ -55,5 +59,8 @@ export default function EthnicityScreen() {
 const styles = StyleSheet.create({
   content: {
     gap: 40,
+  },
+  selectionGroup: {
+    marginBottom: 40,
   },
 });

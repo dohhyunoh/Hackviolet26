@@ -1,5 +1,6 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -13,17 +14,16 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <ImageBackground
-      source={require('@/assets/images/gradient-background.png')}
+    <LinearGradient
+      colors={['#a18cd1', '#fbc2eb']}
       style={styles.container}
-      resizeMode="cover"
     >
       <View style={styles.content}>
         <Animated.View 
           entering={FadeInUp.duration(800).delay(200)}
           style={styles.textContainer}
         >
-          <Text style={styles.title}>LunaFlow</Text>
+          <Text style={styles.title}>clarity</Text>
           <Text style={styles.description}>
             Your body, decoded
           </Text>
@@ -38,14 +38,13 @@ export default function WelcomeScreen() {
           </Pressable>
         </Animated.View>
       </View>
-    </ImageBackground>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a0b2e',
   },
   content: {
     flex: 1,
@@ -57,14 +56,14 @@ const styles = StyleSheet.create({
   textContainer: {
     flex: 1,
     justifyContent: 'center',
-    gap: 20,
+    gap: 12,
   },
   title: {
-    fontSize: 40,
+    fontSize: 60,
     fontWeight: '700',
+    fontFamily: 'Borel',
     color: '#ffffff',
     textAlign: 'center',
-    marginBottom: 16,
   },
   description: {
     fontSize: 20,

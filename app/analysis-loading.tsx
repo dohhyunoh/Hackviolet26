@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 
 const ANALYSIS_STEPS = [
@@ -50,7 +50,7 @@ export default function AnalysisLoadingScreen() {
           entering={FadeInDown.duration(800)}
           style={styles.logoContainer}
         >
-          <Text style={styles.logo}>lunaflow</Text>
+          <Text style={styles.logo}>clarity</Text>
           <ActivityIndicator size="large" color="#ffffff" style={styles.spinner} />
         </Animated.View>
 
@@ -104,6 +104,7 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 48,
     fontWeight: '700',
+    fontFamily: 'Borel',
     color: '#ffffff',
     letterSpacing: 2,
     marginBottom: 24,

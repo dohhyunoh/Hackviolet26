@@ -2,12 +2,10 @@ import { CheckboxOption } from '@/components/form/CheckboxOption';
 import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
 import { OnboardingContainer } from '@/components/onboarding/OnboardingContainer';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
-import { OnboardingTheme } from '@/constants/theme';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { PhysicalMarker } from '@/types/onboarding';
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 
 const markerOptions: { value: PhysicalMarker; label: string }[] = [
   { value: 'acne', label: 'Persistent acne' },
@@ -47,6 +45,8 @@ export default function PhysicalMarkersScreen() {
         <OnboardingHeader
           title="Are you experiencing any of the following?"
           description="Based on the Rotterdam Criteria (clinical standard for PCOS diagnosis)"
+          titleFont="Outfit"
+          descriptionFont="ZillaSlab"
         />
 
         <View style={styles.options}>
@@ -59,8 +59,6 @@ export default function PhysicalMarkersScreen() {
               delay={300 + index * 50}
             />
           ))}
-
-          <Animated.View entering={FadeInDown.duration(800).delay(450)} style={styles.divider} />
 
           <CheckboxOption
             label="None of the above"
@@ -86,10 +84,6 @@ const styles = StyleSheet.create({
   },
   options: {
     gap: 12,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: OnboardingTheme.inputBorder,
-    marginVertical: 8,
+    marginBottom: 40,
   },
 });

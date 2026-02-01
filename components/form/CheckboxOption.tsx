@@ -1,6 +1,6 @@
-import { Pressable, Text, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { OnboardingTheme } from '@/constants/theme';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface CheckboxOptionProps {
   label: string;
@@ -18,9 +18,6 @@ export function CheckboxOption({ label, checked, onToggle, delay = 300 }: Checkb
       onPress={onToggle}
       style={[styles.container, checked && styles.containerChecked]}
     >
-      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-        {checked && <View style={styles.checkmark} />}
-      </View>
       <Text style={[styles.label, checked && styles.labelChecked]}>{label}</Text>
     </AnimatedPressable>
   );
@@ -36,30 +33,10 @@ const styles = StyleSheet.create({
     borderRadius: OnboardingTheme.borderRadius.selection,
     paddingVertical: 16,
     paddingHorizontal: 20,
-    gap: 16,
   },
   containerChecked: {
     backgroundColor: OnboardingTheme.selectionButtonActive,
     borderColor: OnboardingTheme.selectionButtonBorderActive,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: OnboardingTheme.text,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: OnboardingTheme.buttonText,
-    borderColor: OnboardingTheme.buttonText,
-  },
-  checkmark: {
-    width: 12,
-    height: 12,
-    borderRadius: 3,
-    backgroundColor: OnboardingTheme.text,
   },
   label: {
     flex: 1,

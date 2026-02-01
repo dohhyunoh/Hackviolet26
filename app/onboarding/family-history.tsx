@@ -28,6 +28,8 @@ export default function FamilyHistoryScreen() {
         <OnboardingHeader
           title="Family History"
           description="Do any close biological relatives (mother, sister, aunt) have a confirmed diagnosis of PCOS or severe irregular cycles?"
+          titleFont="Outfit"
+          descriptionFont="ZillaSlab"
         />
 
         <SelectionGroup

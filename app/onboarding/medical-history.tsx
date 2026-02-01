@@ -26,13 +26,17 @@ export default function MedicalHistoryScreen() {
         <OnboardingHeader
           title="Do you currently use hormonal birth control or hormone therapy?"
           description="Hormonal medications can affect your natural cycle patterns"
+          titleFont="Outfit"
+          descriptionFont="ZillaSlab"
         />
 
-        <SelectionGroup
-          options={medicationOptions}
-          selectedValue={usesHormonalMedication !== undefined ? (usesHormonalMedication ? 'yes' : 'no') : undefined}
-          onSelect={(value) => setHormonalMedication(value === 'yes')}
-        />
+        <View style={styles.selectionGroup}>
+          <SelectionGroup
+            options={medicationOptions}
+            selectedValue={usesHormonalMedication !== undefined ? (usesHormonalMedication ? 'yes' : 'no') : undefined}
+            onSelect={(value) => setHormonalMedication(value === 'yes')}
+          />
+        </View>
       </View>
 
       <OnboardingButton
@@ -47,5 +51,8 @@ export default function MedicalHistoryScreen() {
 const styles = StyleSheet.create({
   content: {
     gap: 40,
+  },
+  selectionGroup: {
+    marginBottom: 40,
   },
 });

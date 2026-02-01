@@ -1,10 +1,10 @@
-import { View, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { TextInput } from '@/components/form/TextInput';
+import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
 import { OnboardingContainer } from '@/components/onboarding/OnboardingContainer';
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
-import { OnboardingButton } from '@/components/onboarding/OnboardingButton';
-import { TextInput } from '@/components/form/TextInput';
 import { useOnboardingStore } from '@/stores/onboardingStore';
+import { useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 export default function NameScreen() {
   const router = useRouter();
@@ -23,6 +23,8 @@ export default function NameScreen() {
         <OnboardingHeader
           title="What should we call you?"
           description="Let's personalize your experience"
+          titleFont="Outfit"
+          descriptionFont="ZillaSlab"
         />
 
         <TextInput

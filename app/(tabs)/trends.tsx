@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useUserStore } from '@/stores/userStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Svg, { Path, Circle, Line, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 const GRAPH_WIDTH = width - 60;
@@ -311,10 +311,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
+    fontFamily: 'Outfit',
     color: '#ffffff',
   },
   subtitle: {
     fontSize: 16,
+    fontFamily: 'ZillaSlab',
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
   },
