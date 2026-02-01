@@ -1,69 +1,57 @@
 import { useUserStore } from '@/stores/userStore';
+import { useRecordingStore } from '@/stores/recordingStore';
+import { useCycleStore } from '@/stores/cycleStore';
+import { useHealthMetricsStore } from '@/stores/healthMetricsStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
+import { TrendsDataAggregator } from '@/utils/TrendsDataAggregator';
+import { CorrelationAnalyzer } from '@/utils/CorrelationAnalyzer';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
+import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 
 const { width } = Dimensions.get('window');
 
-// UPDATED: Changed from 100 to 180 to prevent labels from being cut off
-const GRAPH_WIDTH = width - 180; 
+const GRAPH_WIDTH = width - 180;
 const GRAPH_HEIGHT = 250;
 
-// Generate mock data for convergence graph (last 30 days)
-const generateConvergenceData = (riskLevel: string) => {
-  const days = 30;
-  const data: { jitter: number; rhr: number }[] = [];
-  
-  for (let i = 0; i < days; i++) {
-    let jitter: number;
-    let rhr: number;
-    
-    // Simulate cycle phases
-    const cycleDay = i % 28;
-    const isLuteal = cycleDay >= 14 && cycleDay <= 27;
-    
-    if (riskLevel === 'HIGH') {
-      // High jitter with spikes in luteal phase
-      jitter = isLuteal ? 1.5 + Math.random() * 1.0 : 1.0 + Math.random() * 0.5;
-      // RHR also spikes in luteal phase
-      rhr = isLuteal ? 72 + Math.random() * 8 : 65 + Math.random() * 5;
-    } else if (riskLevel === 'MODERATE') {
-      jitter = isLuteal ? 1.0 + Math.random() * 0.5 : 0.7 + Math.random() * 0.3;
-      rhr = isLuteal ? 68 + Math.random() * 6 : 64 + Math.random() * 4;
-    } else {
-      jitter = 0.4 + Math.random() * 0.3;
-      rhr = 62 + Math.random() * 4;
-    }
-    
-    data.push({ jitter, rhr });
-  }
-  
-  return data;
-};
+function ConvergenceGraph({ data }: { data: Array<{ date: string; jitter?: number; rhr?: number }> }) {
+  // Filter out undefined values for scaling
+  const jitterValues = data.map(d => d.jitter).filter((v): v is number => v !== undefined);
+  const rhrValues = data.map(d => d.rhr).filter((v): v is number => v !== undefined);
 
-function ConvergenceGraph({ data }: { data: { jitter: number; rhr: number }[] }) {
-  // Calculate scales
-  const jitterValues = data.map(d => d.jitter);
-  const rhrValues = data.map(d => d.rhr);
-  
+  // Handle empty data
+  if (jitterValues.length === 0 && rhrValues.length === 0) {
+    return null;
+  }
+
   const jitterMin = 0;
-  const jitterMax = Math.max(...jitterValues, 3);
-  const rhrMin = Math.min(...rhrValues) - 5;
-  const rhrMax = Math.max(...rhrValues) + 5;
+  const jitterMax = jitterValues.length > 0 ? Math.max(...jitterValues, 3) : 3;
+  const rhrMin = rhrValues.length > 0 ? Math.min(...rhrValues) - 5 : 55;
+  const rhrMax = rhrValues.length > 0 ? Math.max(...rhrValues) + 5 : 85;
   
-  // Generate points
-  const jitterPoints = data.map((d, i) => ({
-    x: (i / (data.length - 1)) * GRAPH_WIDTH,
-    y: GRAPH_HEIGHT - ((d.jitter - jitterMin) / (jitterMax - jitterMin)) * GRAPH_HEIGHT,
-    value: d.jitter,
-  }));
-  
-  const rhrPoints = data.map((d, i) => ({
-    x: (i / (data.length - 1)) * GRAPH_WIDTH,
-    y: GRAPH_HEIGHT - ((d.rhr - rhrMin) / (rhrMax - rhrMin)) * GRAPH_HEIGHT,
-    value: d.rhr,
-  }));
+  // Generate points (filter out undefined for path generation)
+  const jitterPoints = data
+    .map((d, i) => ({
+      x: (i / (data.length - 1)) * GRAPH_WIDTH,
+      y: d.jitter !== undefined
+        ? GRAPH_HEIGHT - ((d.jitter - jitterMin) / (jitterMax - jitterMin)) * GRAPH_HEIGHT
+        : null,
+      value: d.jitter,
+    }))
+    .filter((p): p is { x: number; y: number; value: number } => p.y !== null && p.value !== undefined);
+
+  const rhrPoints = data
+    .map((d, i) => ({
+      x: (i / (data.length - 1)) * GRAPH_WIDTH,
+      y: d.rhr !== undefined
+        ? GRAPH_HEIGHT - ((d.rhr - rhrMin) / (rhrMax - rhrMin)) * GRAPH_HEIGHT
+        : null,
+      value: d.rhr,
+    }))
+    .filter((p): p is { x: number; y: number; value: number } => p.y !== null && p.value !== undefined);
   
   // Generate paths
   const jitterPath = jitterPoints.reduce((path, point, i) => {
@@ -95,41 +83,47 @@ function ConvergenceGraph({ data }: { data: { jitter: number; rhr: number }[] })
           );
         })}
         
-        {/* REMOVED PERIOD MARKERS HERE */}
-        
         {/* RHR line (behind) */}
-        <Path
-          d={rhrPath}
-          stroke="#FF6B6B"
-          strokeWidth="2.5"
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        
+        {rhrPoints.length > 0 && (
+          <Path
+            d={rhrPath}
+            stroke="#FF6B6B"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+
         {/* Jitter line (front) */}
-        <Path
-          d={jitterPath}
-          stroke="#14b8a6"
-          strokeWidth="3"
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        
+        {jitterPoints.length > 0 && (
+          <Path
+            d={jitterPath}
+            stroke="#14b8a6"
+            strokeWidth="3"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+
         {/* Latest points */}
-        <Circle
-          cx={jitterPoints[jitterPoints.length - 1].x}
-          cy={jitterPoints[jitterPoints.length - 1].y}
-          r="5"
-          fill="#14b8a6"
-        />
-        <Circle
-          cx={rhrPoints[rhrPoints.length - 1].x}
-          cy={rhrPoints[rhrPoints.length - 1].y}
-          r="5"
-          fill="#FF6B6B"
-        />
+        {jitterPoints.length > 0 && (
+          <Circle
+            cx={jitterPoints[jitterPoints.length - 1].x}
+            cy={jitterPoints[jitterPoints.length - 1].y}
+            r="5"
+            fill="#14b8a6"
+          />
+        )}
+        {rhrPoints.length > 0 && (
+          <Circle
+            cx={rhrPoints[rhrPoints.length - 1].x}
+            cy={rhrPoints[rhrPoints.length - 1].y}
+            r="5"
+            fill="#FF6B6B"
+          />
+        )}
       </Svg>
       
       {/* Y-axis labels */}
@@ -149,18 +143,66 @@ function ConvergenceGraph({ data }: { data: { jitter: number; rhr: number }[] })
 }
 
 export default function TrendsScreen() {
-  const { riskAnalysis } = useUserStore();
-  
-  const convergenceData = generateConvergenceData(riskAnalysis?.riskLevel || 'LOW');
-  
-  // Calculate averages
-  const last7DaysJitter = convergenceData.slice(-7);
-  const avgJitter = last7DaysJitter.reduce((sum, d) => sum + d.jitter, 0) / 7;
-  const avgRHR = last7DaysJitter.reduce((sum, d) => sum + d.rhr, 0) / 7;
-  
-  // Mock BMI data
-  const currentBMI = 24.5;
-  const bmiTrend = '+0.2';
+  const router = useRouter();
+  const { recordings } = useRecordingStore();
+  const { periodDays, getCycleHistory } = useCycleStore();
+  const { metrics } = useHealthMetricsStore();
+  const onboarding = useOnboardingStore();
+
+  // Aggregate data from all sources
+  const convergenceData = useMemo(
+    () => TrendsDataAggregator.aggregateLast30Days(recordings, metrics, periodDays, onboarding),
+    [recordings, metrics, periodDays, onboarding]
+  );
+
+  // Calculate 7-day averages
+  const averages = useMemo(
+    () => TrendsDataAggregator.calculate7DayAverages(convergenceData),
+    [convergenceData]
+  );
+
+  // Calculate BMI
+  const bmiData = useMemo(
+    () => TrendsDataAggregator.calculateBMI(metrics, onboarding),
+    [metrics, onboarding]
+  );
+
+  // Calculate cycle regularity
+  const regularity = useMemo(
+    () => TrendsDataAggregator.calculateCycleRegularity(getCycleHistory()),
+    [getCycleHistory]
+  );
+
+  // Generate insights
+  const insights = useMemo(
+    () => CorrelationAnalyzer.analyzeCorrelations(convergenceData),
+    [convergenceData]
+  );
+
+  // Check if we have any data at all
+  const hasAnyData = convergenceData.some((d) => d.jitter !== undefined || d.rhr !== undefined);
+
+  const handleConnectAppleHealth = () => {
+    router.push('/onboarding/vital-sync');
+  };
+
+  const handleAddHealthData = () => {
+    Alert.alert(
+      'Add Health Data',
+      'Choose how you want to add your health metrics',
+      [
+        {
+          text: 'Connect Apple Health',
+          onPress: handleConnectAppleHealth,
+        },
+        {
+          text: 'Enter Manually',
+          onPress: () => router.push('/(tabs)/calendar'),
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
 
   return (
     <LinearGradient colors={['#a18cd1', '#fbc2eb']} style={styles.container}>
@@ -181,59 +223,115 @@ export default function TrendsScreen() {
             <Text style={styles.cardTitle}>Voice + Heart Correlation</Text>
             <Text style={styles.cardSubtitle}>Last 30 Days</Text>
           </View>
-          
-          {/* Legend - REMOVED PERIOD ITEM */}
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendLine, { backgroundColor: '#14b8a6' }]} />
-              <Text style={styles.legendText}>Vocal Jitter</Text>
+
+          {hasAnyData ? (
+            <>
+              <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendLine, { backgroundColor: '#14b8a6' }]} />
+                  <Text style={styles.legendText}>Vocal Jitter</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendLine, { backgroundColor: '#FF6B6B' }]} />
+                  <Text style={styles.legendText}>Resting Heart Rate</Text>
+                </View>
+              </View>
+              <ConvergenceGraph data={convergenceData} />
+            </>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>📈</Text>
+              <Text style={styles.emptyTitle}>Start Your Journey</Text>
+              <Text style={styles.emptyText}>
+                Begin recording your voice daily and tracking your cycle to see trends emerge
+              </Text>
+              <Pressable
+                style={styles.ctaButton}
+                onPress={() => router.push('/(tabs)/record')}
+              >
+                <Text style={styles.ctaButtonText}>Make Your First Recording</Text>
+              </Pressable>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendLine, { backgroundColor: '#FF6B6B' }]} />
-              <Text style={styles.legendText}>Resting Heart Rate</Text>
-            </View>
-          </View>
-          
-          <ConvergenceGraph data={convergenceData} />
+          )}
         </Animated.View>
 
         {/* Biometric Cards */}
         <Animated.View entering={FadeInDown.duration(800).delay(400)} style={styles.biometricsContainer}>
-          <Text style={styles.sectionTitle}>7-Day Averages</Text>
-          
+          <Text style={styles.sectionTitle}>Health Metrics</Text>
+
           <View style={styles.biometricRow}>
             {/* Avg Jitter */}
             <View style={styles.biometricCard}>
               <Text style={styles.biometricIcon}>🎙️</Text>
-              <Text style={styles.biometricValue}>{avgJitter.toFixed(2)}%</Text>
+              <Text style={styles.biometricValue}>
+                {averages.avgJitter !== null ? `${averages.avgJitter.toFixed(2)}%` : '—'}
+              </Text>
               <Text style={styles.biometricLabel}>Vocal Jitter</Text>
-              <Text style={styles.biometricChange}>↑ 0.1% from last week</Text>
+              {averages.avgJitter !== null ? (
+                <Text style={styles.biometricChange}>
+                  {averages.dataPoints.jitter} recordings
+                </Text>
+              ) : (
+                <Pressable onPress={() => router.push('/(tabs)/record')}>
+                  <Text style={styles.biometricEmpty}>Record voice</Text>
+                </Pressable>
+              )}
             </View>
-            
+
             {/* Avg RHR */}
             <View style={styles.biometricCard}>
               <Text style={styles.biometricIcon}>❤️</Text>
-              <Text style={styles.biometricValue}>{Math.round(avgRHR)}</Text>
+              <Text style={styles.biometricValue}>
+                {averages.avgRHR !== null ? `${Math.round(averages.avgRHR)}` : '—'}
+              </Text>
               <Text style={styles.biometricLabel}>Resting HR</Text>
-              <Text style={styles.biometricChange}>↓ 2 bpm from last week</Text>
+              {averages.rhrTrend ? (
+                <Text style={styles.biometricChange}>{averages.rhrTrend}</Text>
+              ) : averages.avgRHR === null ? (
+                <Pressable onPress={handleAddHealthData}>
+                  <Text style={styles.biometricEmpty}>Add health data</Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.biometricChange}>No trend yet</Text>
+              )}
             </View>
           </View>
-          
+
           <View style={styles.biometricRow}>
             {/* BMI */}
             <View style={styles.biometricCard}>
               <Text style={styles.biometricIcon}>⚖️</Text>
-              <Text style={styles.biometricValue}>{currentBMI}</Text>
+              <Text style={styles.biometricValue}>
+                {bmiData.current !== null ? bmiData.current.toFixed(1) : '—'}
+              </Text>
               <Text style={styles.biometricLabel}>BMI</Text>
-              <Text style={styles.biometricChange}>{bmiTrend} from last month</Text>
+              {bmiData.trend ? (
+                <Text style={styles.biometricChange}>{bmiData.trend}</Text>
+              ) : bmiData.current === null ? (
+                <Pressable onPress={handleAddHealthData}>
+                  <Text style={styles.biometricEmpty}>Track weight</Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.biometricChange}>No trend yet</Text>
+              )}
             </View>
-            
+
             {/* Cycle Regularity */}
             <View style={styles.biometricCard}>
-              <Text style={styles.biometricIcon}>📅</Text>
-              <Text style={styles.biometricValue}>85%</Text>
+              <Text style={styles.biometricIcon}>📊</Text>
+              <Text style={styles.biometricValue}>
+                {regularity !== null ? `${regularity}%` : '—'}
+              </Text>
               <Text style={styles.biometricLabel}>Regularity</Text>
-              <Text style={styles.biometricChange}>Based on 3 cycles</Text>
+              {regularity !== null ? (
+                <Text style={styles.biometricChange}>
+                  {getCycleHistory().length} cycles
+                </Text>
+              ) : (
+                <Pressable onPress={() => router.push('/(tabs)/calendar')}>
+                  <Text style={styles.biometricEmpty}>Track period</Text>
+                </Pressable>
+              )}
             </View>
           </View>
         </Animated.View>
@@ -241,27 +339,22 @@ export default function TrendsScreen() {
         {/* Insights */}
         <Animated.View entering={FadeInDown.duration(800).delay(600)} style={styles.card}>
           <Text style={styles.cardTitle}>Correlation Insights</Text>
-          
-          <View style={styles.insightItem}>
-            <Text style={styles.insightIcon}>📊</Text>
-            <Text style={styles.insightText}>
-              Your jitter tends to spike 3-5 days before your period
-            </Text>
-          </View>
-          
-          <View style={styles.insightItem}>
-            <Text style={styles.insightIcon}>💓</Text>
-            <Text style={styles.insightText}>
-              RHR increases by 5-8 bpm during luteal phase
-            </Text>
-          </View>
-          
-          <View style={styles.insightItem}>
-            <Text style={styles.insightIcon}>✨</Text>
-            <Text style={styles.insightText}>
-              Voice stability improves when cycle is regular
-            </Text>
-          </View>
+
+          {insights.length > 0 ? (
+            insights.map((insight, idx) => (
+              <View key={idx} style={styles.insightItem}>
+                <Text style={styles.insightIcon}>📊</Text>
+                <Text style={styles.insightText}>{insight}</Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyInsights}>
+              <Text style={styles.emptyInsightsTitle}>Building Your Profile</Text>
+              <Text style={styles.emptyInsightsText}>
+                Keep tracking your cycles and recording your voice to unlock personalized insights
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
         <View style={styles.bottomSpacer} />
@@ -436,5 +529,58 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 20,
+  },
+  biometricEmpty: {
+    fontSize: 11,
+    color: '#a18cd1',
+    marginTop: 4,
+    textDecorationLine: 'underline',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a0b2e',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  ctaButton: {
+    backgroundColor: '#a18cd1',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  ctaButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  emptyInsights: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  emptyInsightsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a0b2e',
+    marginBottom: 8,
+  },
+  emptyInsightsText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });

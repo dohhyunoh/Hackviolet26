@@ -14,7 +14,8 @@
         "NSMicrophoneUsageDescription": "Lunaflow needs access to your microphone to record voice samples for hormonal analysis.",
         "NSHealthShareUsageDescription": "Lunaflow needs access to your health data to provide personalized insights.",
         "NSHealthUpdateUsageDescription": "Lunaflow needs to update your health data."
-      }
+      },
+      "bundleIdentifier": "com.anonymous.lunaflow"
     },
     "android": {
       "adaptiveIcon": {
@@ -45,6 +46,13 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "healthSharePermission": "Allow LunaFlow to read your health data for cycle tracking",
+          "healthUpdatePermission": "Allow LunaFlow to update your health data"
         }
       ]
     ],

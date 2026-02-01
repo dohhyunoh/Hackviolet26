@@ -1,8 +1,9 @@
 import { PHASE_COLORS, PHASE_LABELS, Symptom, SYMPTOM_LABELS, useCycleStore } from '@/stores/cycleStore';
 import { useRecordingStore } from '@/stores/recordingStore';
+import { useHealthMetricsStore } from '@/stores/healthMetricsStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -20,6 +21,7 @@ interface DayData {
   isPeriod: boolean;
   hasRecording: boolean;
   hasSymptoms: boolean;
+  hasHealthData: boolean;
   isToday: boolean;
   symptoms: Symptom[];
   recordingCount: number;
@@ -30,7 +32,8 @@ function generateCalendarDays(
   month: number,
   periodDays: string[],
   symptoms: Record<string, Symptom[]>,
-  recordingDates: string[]
+  recordingDates: string[],
+  healthMetricDates: string[]
 ): DayData[] {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -63,6 +66,7 @@ function generateCalendarDays(
       isPeriod: periodDays.includes(dateString),
       hasRecording: recordingDates.includes(dateString),
       hasSymptoms: !!symptoms[dateString]?.length,
+      hasHealthData: healthMetricDates.includes(dateString),
       isToday: false,
       symptoms: symptoms[dateString] || [],
       recordingCount: recordingDates.filter(d => d === dateString).length,
@@ -81,6 +85,7 @@ function generateCalendarDays(
       isPeriod: periodDays.includes(dateString),
       hasRecording: recordingDates.includes(dateString),
       hasSymptoms: daySymptoms.length > 0,
+      hasHealthData: healthMetricDates.includes(dateString),
       isToday: date === todayDate,
       symptoms: daySymptoms,
       recordingCount: recordingDates.filter(d => d === dateString).length,
@@ -101,6 +106,7 @@ function generateCalendarDays(
       isPeriod: periodDays.includes(dateString),
       hasRecording: recordingDates.includes(dateString),
       hasSymptoms: !!symptoms[dateString]?.length,
+      hasHealthData: healthMetricDates.includes(dateString),
       isToday: false,
       symptoms: symptoms[dateString] || [],
       recordingCount: 0,
@@ -147,6 +153,7 @@ function CalendarDay({
         <View style={styles.indicators}>
           {day.hasRecording && <View style={[styles.dot, styles.recordingDot]} />}
           {day.hasSymptoms && <View style={[styles.dot, styles.symptomDot]} />}
+          {day.hasHealthData && <View style={[styles.dot, styles.healthDot]} />}
         </View>
       </View>
     </Pressable>
@@ -208,12 +215,97 @@ function SymptomPicker({
   );
 }
 
+function HealthMetricsModal({
+  visible,
+  onSave,
+  onClose,
+  initialRHR,
+  initialWeight,
+}: {
+  visible: boolean;
+  onSave: (rhr?: number, weight?: number) => void;
+  onClose: () => void;
+  initialRHR?: number;
+  initialWeight?: number;
+}) {
+  const [rhr, setRHR] = useState(initialRHR?.toString() || '');
+  const [weight, setWeight] = useState(initialWeight?.toString() || '');
+
+  const handleSave = () => {
+    const rhrNum = rhr ? parseFloat(rhr) : undefined;
+    const weightNum = weight ? parseFloat(weight) : undefined;
+
+    // Validate
+    if (rhrNum !== undefined && (rhrNum < 40 || rhrNum > 120)) {
+      return;
+    }
+    if (weightNum !== undefined && (weightNum < 30 || weightNum > 200)) {
+      return;
+    }
+
+    onSave(rhrNum, weightNum);
+    onClose();
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.symptomModal}>
+          <Text style={styles.modalTitle}>Health Metrics</Text>
+          <Text style={styles.modalSubtitle}>Track your vitals</Text>
+
+          <View style={styles.healthInputs}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Resting Heart Rate (bpm)</Text>
+              <TextInput
+                style={styles.healthInput}
+                value={rhr}
+                onChangeText={setRHR}
+                keyboardType="numeric"
+                placeholder="e.g., 65"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Weight (kg)</Text>
+              <TextInput
+                style={styles.healthInput}
+                value={weight}
+                onChangeText={setWeight}
+                keyboardType="numeric"
+                placeholder="e.g., 65.5"
+                placeholderTextColor="#999"
+              />
+            </View>
+          </View>
+
+          <View style={styles.modalButtons}>
+            <Pressable style={styles.modalSecondaryButton} onPress={onClose}>
+              <Text style={styles.modalSecondaryText}>Cancel</Text>
+            </Pressable>
+            <Pressable style={styles.modalCloseButton} onPress={handleSave}>
+              <Text style={styles.modalCloseText}>Save</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function CalendarScreen() {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
   const [symptomPickerVisible, setSymptomPickerVisible] = useState(false);
+  const [healthMetricsVisible, setHealthMetricsVisible] = useState(false);
 
   // Get data from stores
   const {
@@ -230,11 +322,17 @@ export default function CalendarScreen() {
   } = useCycleStore();
 
   const { recordings } = useRecordingStore();
+  const { metrics, addMetric, getMetricForDate } = useHealthMetricsStore();
 
   // Get unique recording dates
   const recordingDates = useMemo(() => {
     return recordings.map(r => r.timestamp.split('T')[0]);
   }, [recordings]);
+
+  // Get health metric dates
+  const healthMetricDates = useMemo(() => {
+    return Object.keys(metrics);
+  }, [metrics]);
 
   // Generate calendar days with real data
   const days = useMemo(() => {
@@ -243,9 +341,10 @@ export default function CalendarScreen() {
       currentMonth,
       periodDays,
       symptoms,
-      recordingDates
+      recordingDates,
+      healthMetricDates
     );
-  }, [currentYear, currentMonth, periodDays, symptoms, recordingDates]);
+  }, [currentYear, currentMonth, periodDays, symptoms, recordingDates, healthMetricDates]);
 
   const goToPreviousMonth = () => {
     if (currentMonth === 0) {
@@ -311,6 +410,25 @@ export default function CalendarScreen() {
       } : null);
     }
   }, [selectedDay, toggleSymptom, getSymptomsForDate]);
+
+  const handleOpenHealthPicker = useCallback(() => {
+    setHealthMetricsVisible(true);
+  }, []);
+
+  const handleSaveHealthMetrics = useCallback((rhr?: number, weight?: number) => {
+    if (selectedDay) {
+      addMetric(selectedDay.dateString, {
+        restingHeartRate: rhr,
+        weight,
+        source: 'manual',
+      });
+      // Update selected day state
+      setSelectedDay(prev => prev ? {
+        ...prev,
+        hasHealthData: true,
+      } : null);
+    }
+  }, [selectedDay, addMetric]);
 
   return (
     <LinearGradient colors={['#a18cd1', '#fbc2eb']} style={styles.container}>
@@ -412,6 +530,10 @@ export default function CalendarScreen() {
               <View style={[styles.legendDot, styles.symptomDot]} />
               <Text style={styles.legendText}>Symptoms</Text>
             </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, styles.healthDot]} />
+              <Text style={styles.legendText}>Health</Text>
+            </View>
           </View>
         </Animated.View>
 
@@ -442,6 +564,36 @@ export default function CalendarScreen() {
                 </Text>
               </View>
             )}
+
+            {/* Health Metrics */}
+            <View style={styles.symptomsSection}>
+              <View style={styles.symptomsHeader}>
+                <Text style={styles.symptomsLabel}>Health Metrics</Text>
+                <Pressable onPress={handleOpenHealthPicker} style={styles.addSymptomButton}>
+                  <Text style={styles.addSymptomText}>+ Add</Text>
+                </Pressable>
+              </View>
+
+              {(() => {
+                const dayMetrics = getMetricForDate(selectedDay.dateString);
+                return dayMetrics ? (
+                  <View style={styles.healthMetricsDisplay}>
+                    {dayMetrics.restingHeartRate && (
+                      <Text style={styles.healthMetricText}>
+                        ❤️ RHR: {dayMetrics.restingHeartRate} bpm
+                      </Text>
+                    )}
+                    {dayMetrics.weight && (
+                      <Text style={styles.healthMetricText}>
+                        ⚖️ Weight: {dayMetrics.weight} kg
+                      </Text>
+                    )}
+                  </View>
+                ) : (
+                  <Text style={styles.noSymptomsText}>No health data logged</Text>
+                );
+              })()}
+            </View>
 
             {/* Symptoms */}
             <View style={styles.symptomsSection}>
@@ -486,6 +638,15 @@ export default function CalendarScreen() {
         selectedSymptoms={selectedDay?.symptoms || []}
         onToggle={handleToggleSymptom}
         onClose={() => setSymptomPickerVisible(false)}
+      />
+
+      {/* Health Metrics Modal */}
+      <HealthMetricsModal
+        visible={healthMetricsVisible}
+        onSave={handleSaveHealthMetrics}
+        onClose={() => setHealthMetricsVisible(false)}
+        initialRHR={selectedDay ? getMetricForDate(selectedDay.dateString)?.restingHeartRate : undefined}
+        initialWeight={selectedDay ? getMetricForDate(selectedDay.dateString)?.weight : undefined}
       />
     </LinearGradient>
   );
@@ -682,6 +843,9 @@ const styles = StyleSheet.create({
   },
   symptomDot: {
     backgroundColor: '#FFB75E',
+  },
+  healthDot: {
+    backgroundColor: '#3b82f6',
   },
   legend: {
     flexDirection: 'row',
@@ -894,5 +1058,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  healthInputs: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a0b2e',
+  },
+  healthInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1a0b2e',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalSecondaryButton: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 16,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  modalSecondaryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a0b2e',
+  },
+  healthMetricsDisplay: {
+    gap: 8,
+  },
+  healthMetricText: {
+    fontSize: 14,
+    color: '#1a0b2e',
+    fontWeight: '500',
   },
 });

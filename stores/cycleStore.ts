@@ -273,13 +273,25 @@ export const useCycleStore = create<CycleStore>()(
           });
         }
 
-        // Add the most recent cycle (ongoing)
+        // Check if the last period is actually ongoing or completed
         const lastGroup = groups[groups.length - 1];
-        history.push({
-          startDate: lastGroup[0],
-          endDate: lastGroup[lastGroup.length - 1],
-          length: get().getCurrentCycleDay(),
-        });
+        const lastPeriodStart = new Date(lastGroup[0]);
+        const today = new Date();
+        const daysSinceLastPeriod = Math.round((today.getTime() - lastPeriodStart.getTime()) / (1000 * 60 * 60 * 24));
+
+        // If last period was more than 45 days ago, treat it as completed
+        // Otherwise, treat it as ongoing
+        if (daysSinceLastPeriod > 45) {
+          // Last period is old - don't add as ongoing cycle
+          // User likely backlogged data or hasn't had a period in a while
+        } else {
+          // Last period is recent - add as ongoing cycle
+          history.push({
+            startDate: lastGroup[0],
+            endDate: lastGroup[lastGroup.length - 1],
+            length: get().getCurrentCycleDay(),
+          });
+        }
 
         return history;
       },
