@@ -228,26 +228,19 @@ export default function HomeScreen() {
 
           <VocalJitterGraph data={jitterData} recordingDates={recordingDates} dates={dates} />
 
-          {recordings.length === 0 ? (
-            <Pressable
-              style={styles.recordCTA}
-              onPress={() => router.push('/(tabs)/record')}
-            >
-              <Text style={styles.recordCTAText}>Record your first voice sample</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{averageJitter.toFixed(3)}%</Text>
-                <Text style={styles.statLabel}>30-Day Avg</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{recordings.length}</Text>
-                <Text style={styles.statLabel}>Recordings</Text>
-              </View>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {recordings.length > 0 ? averageJitter.toFixed(3) : '—'}%
+              </Text>
+              <Text style={styles.statLabel}>30-Day Avg</Text>
             </View>
-          )}
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{recordings.length}</Text>
+              <Text style={styles.statLabel}>Recordings</Text>
+            </View>
+          </View>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(800).delay(400)} style={styles.card}>
@@ -461,17 +454,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: 32,
     backgroundColor: 'rgba(26, 11, 46, 0.1)',
-  },
-  recordCTA: {
-    backgroundColor: '#a18cd1',
-    paddingVertical: 14,
-    borderRadius: 20,
-    alignItems: 'center',
-  },
-  recordCTAText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
   },
   cycleInfo: {
     marginTop: 8,

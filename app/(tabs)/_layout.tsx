@@ -39,9 +39,9 @@ export default function TabLayout() {
           title: '',
           tabBarIcon: () => (
             <View style={styles.fabContainer}>
-              <Pressable style={styles.fab}>
+              <View style={styles.fab}>
                 <IconSymbol size={32} name="plus" color="#ffffff" />
-              </Pressable>
+              </View>
             </View>
           ),
           tabBarLabel: () => null,
