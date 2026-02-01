@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Pressable, Text, StyleSheet, Alert } from 'react-native';
-import { Audio } from 'expo-av';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { OnboardingTheme } from '@/constants/theme';
+import { Audio } from 'expo-av';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 interface VoiceRecorderProps {
   onRecordingComplete: (uri: string, duration: number) => void;
@@ -209,6 +209,6 @@ const styles = StyleSheet.create({
   status: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#4CD964',
+    color: '#059669',
   },
 });

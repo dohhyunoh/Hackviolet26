@@ -121,6 +121,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#ffffff',
     textAlign: 'center',
+    fontFamily: 'Zilla Slab',
     opacity: 0.9,
     lineHeight: 32,
     marginTop: -10, // Adjust based on SVG bounding box

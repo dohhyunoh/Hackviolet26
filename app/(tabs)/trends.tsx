@@ -418,14 +418,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 34,
     fontFamily: 'Outfit',
-    fontWeight: '700',
     color: '#ffffff',
   },
   subtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.8)',
+    fontFamily: 'Zilla Slab',
     marginTop: 2,
-    fontWeight: '500',
   },
   
   // -- Section Headers --
