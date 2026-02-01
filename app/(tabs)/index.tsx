@@ -4,7 +4,7 @@ import { useUserStore } from '@/stores/userStore';
 import { getJitterStatus, getJitterStatusColor, getJitterStatusLabel } from '@/types/recording';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -159,6 +159,7 @@ export default function HomeScreen() {
   const { riskAnalysis, profile } = useUserStore();
   const { recordings, getAverageJitter, getLatestRecording } = useRecordingStore();
   const { getCurrentCycleDay, getDaysUntilPeriod, getCurrentPhase, periodDays } = useCycleStore();
+  const [isNarrativeExpanded, setIsNarrativeExpanded] = useState(false);
 
   const latestRecording = getLatestRecording();
   const averageJitter = getAverageJitter(30);
@@ -311,9 +312,19 @@ export default function HomeScreen() {
               <Text style={styles.riskScoreLabel}>/100</Text>
             </View>
 
-            <Text style={styles.riskNarrative} numberOfLines={2}>
+            <Text
+              style={styles.riskNarrative}
+              numberOfLines={isNarrativeExpanded ? undefined : 2}
+              ellipsizeMode="tail"
+            >
               {riskAnalysis.narrative}
             </Text>
+
+            <Pressable onPress={() => setIsNarrativeExpanded(!isNarrativeExpanded)}>
+              <Text style={styles.showMoreText}>
+                {isNarrativeExpanded ? 'Show less' : 'Show more'}
+              </Text>
+            </Pressable>
 
             <Pressable
               style={styles.viewDetailsButton}
@@ -540,7 +551,14 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  showMoreText: {
+    fontSize: 13,
+    color: '#a18cd1',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
   },
   viewDetailsButton: {
     paddingVertical: 12,

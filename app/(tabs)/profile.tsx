@@ -27,6 +27,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [isNarrativeExpanded, setIsNarrativeExpanded] = useState(false);
 
   // Zustand Stores
   const { profile, riskAnalysis, lastSyncedAt, reset: resetUser } = useUserStore();
@@ -152,9 +153,19 @@ export default function ProfileScreen() {
                 <Text style={styles.riskScoreLabel}>/100</Text>
               </View>
 
-              <Text style={styles.riskNarrative} numberOfLines={3}>
+              <Text
+                style={styles.riskNarrative}
+                numberOfLines={isNarrativeExpanded ? undefined : 3}
+                ellipsizeMode="tail"
+              >
                 {riskAnalysis.narrative}
               </Text>
+
+              <Pressable onPress={() => setIsNarrativeExpanded(!isNarrativeExpanded)}>
+                <Text style={styles.showMoreText}>
+                  {isNarrativeExpanded ? 'Show less' : 'Show more'}
+                </Text>
+              </Pressable>
 
               <View style={styles.riskStats}>
                 <View style={styles.riskStat}>
@@ -292,7 +303,8 @@ const styles = StyleSheet.create({
   riskScoreContainer: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 12 },
   riskScore: { fontSize: 48, fontWeight: '700' },
   riskScoreLabel: { fontSize: 20, color: '#666', marginLeft: 4 },
-  riskNarrative: { fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 16 },
+  riskNarrative: { fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 8 },
+  showMoreText: { fontSize: 13, color: '#a18cd1', fontWeight: '600', marginBottom: 12 },
   riskStats: { flexDirection: 'row', justifyContent: 'space-around', paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(26, 11, 46, 0.05)' },
   riskStat: { alignItems: 'center' },
   riskStatValue: { fontSize: 20, fontWeight: '700', color: '#1a0b2e' },

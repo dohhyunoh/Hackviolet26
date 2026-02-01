@@ -3,8 +3,8 @@ import { OnboardingContainer } from '@/components/onboarding/OnboardingContainer
 import { OnboardingHeader } from '@/components/onboarding/OnboardingHeader';
 import { OnboardingTheme } from '@/constants/theme';
 import { useHealthData } from '@/hooks/useHealthData';
-import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useHealthMetricsStore } from '@/stores/healthMetricsStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
@@ -143,31 +143,32 @@ export default function VitalSyncScreen() {
             <Text style={styles.successText}>✓ Connected to Apple Health</Text>
           </Animated.View>
         )}
-      </View>
 
-      <View style={styles.buttons}>
-        {!connected ? (
-          <>
+        {/* Moved buttons INSIDE content to keep them close to the card */}
+        <View style={styles.buttons}>
+          {!connected ? (
+            <>
+              <OnboardingButton
+                title="Connect to Apple Health"
+                onPress={handleConnect}
+                loading={loading}
+                delay={400}
+              />
+              <OnboardingButton
+                title="Skip for now"
+                onPress={handleSkip}
+                variant="secondary"
+                delay={450}
+              />
+            </>
+          ) : (
             <OnboardingButton
-              title="Connect to Apple Health"
-              onPress={handleConnect}
-              loading={loading}
+              title="Continue"
+              onPress={handleContinue}
               delay={400}
             />
-            <OnboardingButton
-              title="Skip for now"
-              onPress={handleSkip}
-              variant="secondary"
-              delay={450}
-            />
-          </>
-        ) : (
-          <OnboardingButton
-            title="Continue"
-            onPress={handleContinue}
-            delay={400}
-          />
-        )}
+          )}
+        </View>
       </View>
     </OnboardingContainer>
   );
@@ -175,7 +176,7 @@ export default function VitalSyncScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    gap: 40,
+    gap: 40, // This now controls the gap between the Header, Card, and Buttons
   },
   infoBox: {
     backgroundColor: OnboardingTheme.inputBackground,
@@ -215,5 +216,6 @@ const styles = StyleSheet.create({
   },
   buttons: {
     gap: 16,
+    marginTop: 10, // Optional: Add a small extra margin if 40px isn't enough
   },
 });

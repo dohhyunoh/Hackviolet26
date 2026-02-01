@@ -14,8 +14,9 @@ import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 
-const GRAPH_WIDTH = width - 80;
+const GRAPH_WIDTH = width - 140;
 const GRAPH_HEIGHT = 220;
+const PADDING = 10; // Padding to prevent dots from being clipped
 
 // --- 1. CONVERGENCE GRAPH COMPONENT ---
 function ConvergenceGraph({ data }: { data: Array<{ date: string; jitter?: number; rhr?: number }> }) {
@@ -42,10 +43,10 @@ function ConvergenceGraph({ data }: { data: Array<{ date: string; jitter?: numbe
   const rhrMin = rhrValues.length > 0 ? Math.min(...rhrValues) - 5 : 55;
   const rhrMax = rhrValues.length > 0 ? Math.max(...rhrValues) + 5 : 85;
   
-  // 4. Generate points
+  // 4. Generate points with padding to prevent clipping
   const jitterPoints = displayData
     .map((d, i) => ({
-      x: (i / (effectiveWindowSize - 1)) * GRAPH_WIDTH,
+      x: PADDING + (i / (effectiveWindowSize - 1)) * (GRAPH_WIDTH - 2 * PADDING),
       y: d.jitter !== undefined
         ? GRAPH_HEIGHT - ((d.jitter - jitterMin) / (jitterMax - jitterMin)) * GRAPH_HEIGHT
         : null,
@@ -55,7 +56,7 @@ function ConvergenceGraph({ data }: { data: Array<{ date: string; jitter?: numbe
 
   const rhrPoints = displayData
     .map((d, i) => ({
-      x: (i / (effectiveWindowSize - 1)) * GRAPH_WIDTH,
+      x: PADDING + (i / (effectiveWindowSize - 1)) * (GRAPH_WIDTH - 2 * PADDING),
       y: d.rhr !== undefined
         ? GRAPH_HEIGHT - ((d.rhr - rhrMin) / (rhrMax - rhrMin)) * GRAPH_HEIGHT
         : null,
@@ -93,9 +94,9 @@ function ConvergenceGraph({ data }: { data: Array<{ date: string; jitter?: numbe
           return (
             <Line
               key={ratio}
-              x1={0}
+              x1={PADDING}
               y1={y}
-              x2={GRAPH_WIDTH}
+              x2={GRAPH_WIDTH - PADDING}
               y2={y}
               stroke={isBottomLine ? "rgba(161, 140, 209, 0.5)" : "rgba(161, 140, 209, 0.1)"}
               strokeWidth={isBottomLine ? "1.5" : "1"}
@@ -147,14 +148,28 @@ function ConvergenceGraph({ data }: { data: Array<{ date: string; jitter?: numbe
       </Svg>
 
       {/* Date Labels */}
-      <View style={{ 
-        flexDirection: 'row', 
-        justifyContent: 'space-between', 
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         width: GRAPH_WIDTH,
         marginTop: -25,
       }}>
         <Text style={styles.dateLabel}>{startDate ? formatDateLabel(startDate) : ''}</Text>
         <Text style={styles.dateLabel}>{lastDataDate ? 'Today' : ''}</Text>
+      </View>
+
+      {/* Y-axis labels - Left (Jitter) */}
+      <View style={styles.leftAxisLabels}>
+        <Text style={styles.leftAxisLabel}>{jitterMax.toFixed(1)}%</Text>
+        <Text style={styles.leftAxisLabel}>{(jitterMax * 0.5).toFixed(1)}%</Text>
+        <Text style={styles.leftAxisLabel}>0%</Text>
+      </View>
+
+      {/* Y-axis labels - Right (RHR) */}
+      <View style={styles.rightAxisLabels}>
+        <Text style={styles.rightAxisLabel}>{Math.round(rhrMax)} bpm</Text>
+        <Text style={styles.rightAxisLabel}>{Math.round((rhrMax + rhrMin) / 2)} bpm</Text>
+        <Text style={styles.rightAxisLabel}>{Math.round(rhrMin)} bpm</Text>
       </View>
     </View>
   );
@@ -254,11 +269,11 @@ export default function TrendsScreen() {
               <View style={styles.legend}>
                 <View style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: '#14b8a6' }]} />
-                  <Text style={styles.legendText}>Vocal Jitter</Text>
+                  <Text style={styles.legendText}>Vocal Jitter (%)</Text>
                 </View>
                 <View style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: '#FF6B6B' }]} />
-                  <Text style={styles.legendText}>Resting Heart Rate</Text>
+                  <Text style={styles.legendText}>Resting Heart Rate (bpm)</Text>
                 </View>
               </View>
               <ConvergenceGraph data={convergenceData} />
@@ -488,6 +503,7 @@ const styles = StyleSheet.create({
 
   // -- Graph Container --
   graphContainer: {
+    position: 'relative',
     alignSelf: 'center',
     marginTop: 10,
   },
@@ -496,6 +512,30 @@ const styles = StyleSheet.create({
     color: '#999',
     fontWeight: '600',
     marginTop: 8,
+  },
+  leftAxisLabels: {
+    position: 'absolute',
+    left: -38,
+    top: 0,
+    height: GRAPH_HEIGHT,
+    justifyContent: 'space-between',
+  },
+  rightAxisLabels: {
+    position: 'absolute',
+    right: -38,
+    top: 0,
+    height: GRAPH_HEIGHT,
+    justifyContent: 'space-between',
+  },
+  leftAxisLabel: {
+    fontSize: 11,
+    color: '#14b8a6',
+    fontWeight: '600',
+  },
+  rightAxisLabel: {
+    fontSize: 11,
+    color: '#FF6B6B',
+    fontWeight: '600',
   },
 
   // -- NEW GRID LAYOUT FOR METRICS --
