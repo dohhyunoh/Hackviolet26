@@ -5,13 +5,15 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
-const GRAPH_WIDTH = width - 60;
+
+// UPDATED: Changed from 100 to 180 to prevent labels from being cut off
+const GRAPH_WIDTH = width - 180; 
 const GRAPH_HEIGHT = 250;
 
 // Generate mock data for convergence graph (last 30 days)
 const generateConvergenceData = (riskLevel: string) => {
   const days = 30;
-  const data: { jitter: number; rhr: number; isPeriod: boolean }[] = [];
+  const data: { jitter: number; rhr: number }[] = [];
   
   for (let i = 0; i < days; i++) {
     let jitter: number;
@@ -19,7 +21,6 @@ const generateConvergenceData = (riskLevel: string) => {
     
     // Simulate cycle phases
     const cycleDay = i % 28;
-    const isPeriod = cycleDay >= 0 && cycleDay <= 4;
     const isLuteal = cycleDay >= 14 && cycleDay <= 27;
     
     if (riskLevel === 'HIGH') {
@@ -35,13 +36,13 @@ const generateConvergenceData = (riskLevel: string) => {
       rhr = 62 + Math.random() * 4;
     }
     
-    data.push({ jitter, rhr, isPeriod });
+    data.push({ jitter, rhr });
   }
   
   return data;
 };
 
-function ConvergenceGraph({ data }: { data: { jitter: number; rhr: number; isPeriod: boolean }[] }) {
+function ConvergenceGraph({ data }: { data: { jitter: number; rhr: number }[] }) {
   // Calculate scales
   const jitterValues = data.map(d => d.jitter);
   const rhrValues = data.map(d => d.rhr);
@@ -94,23 +95,7 @@ function ConvergenceGraph({ data }: { data: { jitter: number; rhr: number; isPer
           );
         })}
         
-        {/* Period markers */}
-        {data.map((d, i) => {
-          if (!d.isPeriod) return null;
-          const x = (i / (data.length - 1)) * GRAPH_WIDTH;
-          return (
-            <Line
-              key={`period-${i}`}
-              x1={x}
-              y1={0}
-              x2={x}
-              y2={GRAPH_HEIGHT}
-              stroke="#FFE5E5"
-              strokeWidth="8"
-              opacity={0.5}
-            />
-          );
-        })}
+        {/* REMOVED PERIOD MARKERS HERE */}
         
         {/* RHR line (behind) */}
         <Path
@@ -197,7 +182,7 @@ export default function TrendsScreen() {
             <Text style={styles.cardSubtitle}>Last 30 Days</Text>
           </View>
           
-          {/* Legend */}
+          {/* Legend - REMOVED PERIOD ITEM */}
           <View style={styles.legend}>
             <View style={styles.legendItem}>
               <View style={[styles.legendLine, { backgroundColor: '#14b8a6' }]} />
@@ -207,17 +192,9 @@ export default function TrendsScreen() {
               <View style={[styles.legendLine, { backgroundColor: '#FF6B6B' }]} />
               <Text style={styles.legendText}>Resting Heart Rate</Text>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendLine, { backgroundColor: '#FFE5E5' }]} />
-              <Text style={styles.legendText}>Period</Text>
-            </View>
           </View>
           
           <ConvergenceGraph data={convergenceData} />
-          
-          <Text style={styles.graphHint}>
-            💡 Notice how both metrics spike together during luteal phase
-          </Text>
         </Animated.View>
 
         {/* Biometric Cards */}
@@ -302,9 +279,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 60,
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
-  header: {
+  header: { 
     paddingHorizontal: 20,
     marginBottom: 24,
   },
@@ -347,10 +324,10 @@ const styles = StyleSheet.create({
   },
   legend: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center', // Changed from space-around to center
     marginBottom: 20,
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 24, // Added gap since we removed an item
   },
   legendItem: {
     flexDirection: 'row',
@@ -369,6 +346,7 @@ const styles = StyleSheet.create({
   graphContainer: {
     position: 'relative',
     marginVertical: 20,
+    alignSelf: 'center',
   },
   leftAxisLabels: {
     position: 'absolute',

@@ -1,12 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Pressable, Text, StyleSheet, Alert } from 'react-native';
-import {
-  useAudioRecorder,
-  useAudioRecorderState,
-  RecordingPresets,
-  AudioModule,
-  setAudioModeAsync,
-} from 'expo-audio';
+import { Audio } from 'expo-av';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { OnboardingTheme } from '@/constants/theme';
 
@@ -17,57 +11,30 @@ interface VoiceRecorderProps {
   duration?: number;
 }
 
-// Recording options with metering enabled
-const RECORDING_OPTIONS = {
-  ...RecordingPresets.HIGH_QUALITY,
-  isMeteringEnabled: true,
-};
-
-export function VoiceRecorder({ 
-  onRecordingComplete, 
-  onRecordingStart, 
+export function VoiceRecorder({
+  onRecordingComplete,
+  onRecordingStart,
   onAmplitudeChange,
-  duration = 5000 
+  duration = 5000
 }: VoiceRecorderProps) {
   const [hasRecorded, setHasRecorded] = useState(false);
   const [timeLeft, setTimeLeft] = useState(duration / 1000);
   const [isActive, setIsActive] = useState(false);
-
-  // Create recorder with metering enabled
-  const audioRecorder = useAudioRecorder(RECORDING_OPTIONS);
-  
-  // Poll recording state every 50ms for smooth metering updates
-  const recorderState = useAudioRecorderState(audioRecorder, 50);
-
-  // Convert decibels to normalized amplitude (0-1)
-  const dbToAmplitude = useCallback((db: number | undefined): number => {
-    if (db === undefined || db === null) return 0;
-    // Typical metering range is -160 to 0 dB
-    // We'll use -60 to 0 as our practical range
-    const minDb = -60;
-    const maxDb = 0;
-    const clampedDb = Math.max(minDb, Math.min(maxDb, db));
-    return (clampedDb - minDb) / (maxDb - minDb);
-  }, []);
-
-  // Update amplitude when metering changes
-  useEffect(() => {
-    if (recorderState.isRecording && recorderState.metering !== undefined) {
-      const amplitude = dbToAmplitude(recorderState.metering);
-      onAmplitudeChange?.(amplitude);
-    } else if (!recorderState.isRecording) {
-      onAmplitudeChange?.(0);
-    }
-  }, [recorderState.metering, recorderState.isRecording, dbToAmplitude, onAmplitudeChange]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   // Countdown timer
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 0.1) {
-            stopRecording();
+            // Time's up - stop recording
+            if (recordingRef.current) {
+              handleStop();
+            }
             return 0;
           }
           return prev - 0.1;
@@ -77,26 +44,90 @@ export function VoiceRecorder({
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
+  // Metering update
+  useEffect(() => {
+    let meteringInterval: ReturnType<typeof setInterval>;
+
+    if (isRecording && recording) {
+      meteringInterval = setInterval(async () => {
+        try {
+          const status = await recording.getStatusAsync();
+          if (status.isRecording && status.metering !== undefined) {
+            // Convert metering (-160 to 0 dB) to amplitude (0 to 1)
+            const minDb = -60;
+            const maxDb = 0;
+            const clampedDb = Math.max(minDb, Math.min(maxDb, status.metering));
+            const amplitude = (clampedDb - minDb) / (maxDb - minDb);
+            onAmplitudeChange?.(amplitude);
+          }
+        } catch (error) {
+          console.error('Error getting metering:', error);
+        }
+      }, 50);
+    } else {
+      onAmplitudeChange?.(0);
+    }
+
+    return () => {
+      if (meteringInterval) clearInterval(meteringInterval);
+    };
+  }, [isRecording, recording, onAmplitudeChange]);
+
   // Request permissions on mount
   useEffect(() => {
     (async () => {
-      const status = await AudioModule.requestRecordingPermissionsAsync();
-      if (!status.granted) {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
         Alert.alert('Permission Required', 'Microphone access is needed for voice analysis');
       }
-      await setAudioModeAsync({
-        playsInSilentMode: true,
-        allowsRecording: true,
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
       });
     })();
   }, []);
 
+  const handleStop = useCallback(async () => {
+    const currentRecording = recordingRef.current;
+    if (!currentRecording) return;
+
+    try {
+      setIsActive(false);
+      setIsRecording(false);
+      onAmplitudeChange?.(0);
+
+      // Get status BEFORE stopping
+      const status = await currentRecording.getStatusAsync();
+      const durationMs = status.isRecording ? status.durationMillis : 0;
+
+      await currentRecording.stopAndUnloadAsync();
+      const uri = currentRecording.getURI();
+
+      if (uri) {
+        setHasRecorded(true);
+        onRecordingComplete(uri, durationMs);
+      }
+
+      setRecording(null);
+      recordingRef.current = null;
+    } catch (err) {
+      console.error('Failed to stop recording', err);
+      setRecording(null);
+      recordingRef.current = null;
+    }
+  }, [onRecordingComplete, onAmplitudeChange]);
+
   const startRecording = async () => {
     try {
-      // Prepare with metering enabled
-      await audioRecorder.prepareToRecordAsync({ isMeteringEnabled: true });
-      audioRecorder.record();
-      
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        undefined,
+        100 // Update interval for metering in ms
+      );
+
+      setRecording(newRecording);
+      recordingRef.current = newRecording;
+      setIsRecording(true);
       setIsActive(true);
       setTimeLeft(duration / 1000);
       onRecordingStart?.();
@@ -106,28 +137,9 @@ export function VoiceRecorder({
     }
   };
 
-  const stopRecording = async () => {
-    try {
-      setIsActive(false);
-      onAmplitudeChange?.(0);
-      
-      await audioRecorder.stop();
-      
-      const uri = audioRecorder.uri;
-      const durationMs = recorderState.durationMillis || 0;
-      
-      if (uri) {
-        setHasRecorded(true);
-        onRecordingComplete(uri, durationMs);
-      }
-    } catch (err) {
-      console.error('Failed to stop recording', err);
-    }
-  };
-
   const handlePress = () => {
-    if (recorderState.isRecording) {
-      stopRecording();
+    if (isRecording) {
+      handleStop();
     } else {
       setHasRecorded(false);
       startRecording();
@@ -138,16 +150,16 @@ export function VoiceRecorder({
     <Animated.View entering={FadeInDown.duration(800).delay(400)} style={styles.container}>
       <Pressable
         onPress={handlePress}
-        style={[styles.button, recorderState.isRecording && styles.buttonRecording]}
+        style={[styles.button, isRecording && styles.buttonRecording]}
       >
-        <View style={[styles.innerCircle, recorderState.isRecording && styles.innerCircleRecording]} />
+        <View style={[styles.innerCircle, isRecording && styles.innerCircleRecording]} />
       </Pressable>
-      
-      {recorderState.isRecording && (
+
+      {isRecording && (
         <Text style={styles.timer}>{timeLeft.toFixed(1)}s</Text>
       )}
-      
-      {hasRecorded && !recorderState.isRecording && (
+
+      {hasRecorded && !isRecording && (
         <Text style={styles.status}>✓ Recording complete</Text>
       )}
     </Animated.View>

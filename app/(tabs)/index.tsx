@@ -1,60 +1,120 @@
+import { PHASE_COLORS, PHASE_LABELS, useCycleStore } from '@/stores/cycleStore';
+import { useRecordingStore } from '@/stores/recordingStore';
 import { useUserStore } from '@/stores/userStore';
+import { getJitterStatus, getJitterStatusColor, getJitterStatusLabel } from '@/types/recording';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { useMemo } from 'react';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
-const GRAPH_WIDTH = width - 40;
+const GRAPH_WIDTH = width - 100;
 const GRAPH_HEIGHT = 200;
 
-// Mock data for last 30 days of vocal jitter
-const generateMockJitterData = (riskLevel: string) => {
+// Generate jitter data for the graph based on recordings
+function generateJitterDataFromRecordings(
+  recordings: { timestamp: string; jitter: number }[],
+  riskLevel: string
+): { data: number[]; dates: string[] } {
   const days = 30;
+  const today = new Date();
   const data: number[] = [];
-  
-  if (riskLevel === 'HIGH') {
-    // High jitter: spiky, ranging from 1.2 to 2.5%
-    for (let i = 0; i < days; i++) {
-      data.push(1.2 + Math.random() * 1.3);
+  const dates: string[] = [];
+
+  // Create a map of recording dates to jitter values
+  const recordingMap = new Map<string, number[]>();
+  recordings.forEach(r => {
+    const date = r.timestamp.split('T')[0];
+    if (!recordingMap.has(date)) {
+      recordingMap.set(date, []);
     }
-  } else if (riskLevel === 'MODERATE') {
-    // Moderate jitter: some variation, 0.8 to 1.5%
-    for (let i = 0; i < days; i++) {
-      data.push(0.8 + Math.random() * 0.7);
-    }
-  } else {
-    // Low jitter: flat/low, 0.3 to 0.8%
-    for (let i = 0; i < days; i++) {
-      data.push(0.3 + Math.random() * 0.5);
+    recordingMap.get(date)!.push(r.jitter);
+  });
+
+  // Fill in data for last 30 days
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    dates.push(dateStr);
+
+    const dayRecordings = recordingMap.get(dateStr);
+    if (dayRecordings && dayRecordings.length > 0) {
+      // Average jitter for the day
+      const avgJitter = dayRecordings.reduce((a, b) => a + b, 0) / dayRecordings.length;
+      data.push(avgJitter);
+    } else {
+      // No recording for this day - use null marker
+      data.push(-1);
     }
   }
-  
-  return data;
-};
 
-function VocalJitterGraph({ data }: { data: number[] }) {
-  const maxValue = Math.max(...data, 3); // At least 3% for scale
+  // Fill gaps with interpolation or baseline
+  const baseline = riskLevel === 'HIGH' ? 1.5 : riskLevel === 'MODERATE' ? 0.8 : 0.4;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] === -1) {
+      // Find nearest values
+      let prevVal = baseline;
+      let nextVal = baseline;
+
+      for (let j = i - 1; j >= 0; j--) {
+        if (data[j] !== -1) {
+          prevVal = data[j];
+          break;
+        }
+      }
+      for (let j = i + 1; j < data.length; j++) {
+        if (data[j] !== -1) {
+          nextVal = data[j];
+          break;
+        }
+      }
+
+      // Use average of nearest values with slight randomness
+      data[i] = (prevVal + nextVal) / 2 + (Math.random() - 0.5) * 0.1;
+    }
+  }
+
+  return { data, dates };
+}
+
+function VocalJitterGraph({
+  data,
+  recordingDates,
+  dates,
+}: {
+  data: number[];
+  recordingDates: Set<string>;
+  dates: string[];
+}) {
+  const maxValue = Math.max(...data, 3);
   const minValue = 0;
-  const paddingX = 8; // Padding on left and right
-  const paddingY = 8; // Padding on top and bottom
-  const graphInnerWidth = GRAPH_WIDTH - (paddingX * 2);
+  
+  // UPDATED: Added specific paddingLeft to move graph inward past the labels
+  const paddingLeft = 40; 
+  const paddingRight = 10;
+  const paddingY = 8;
+  
+  const graphInnerWidth = GRAPH_WIDTH - paddingLeft - paddingRight;
   const graphInnerHeight = GRAPH_HEIGHT - (paddingY * 2);
-  
-  // Generate SVG path
+
   const points = data.map((value, index) => {
-    const x = paddingX + (index / (data.length - 1)) * graphInnerWidth;
+    // UPDATED: x calculation uses paddingLeft
+    const x = paddingLeft + (index / (data.length - 1)) * graphInnerWidth;
     const y = paddingY + (graphInnerHeight - ((value - minValue) / (maxValue - minValue)) * graphInnerHeight);
-    return { x, y, value };
+    const hasRecording = recordingDates.has(dates[index]);
+    return { x, y, value, hasRecording };
   });
-  
+
   const pathData = points.reduce((path, point, index) => {
     if (index === 0) {
       return `M ${point.x} ${point.y}`;
     }
     return `${path} L ${point.x} ${point.y}`;
   }, '');
-  
+
   return (
     <View style={styles.graphContainer}>
       <Svg width={GRAPH_WIDTH} height={GRAPH_HEIGHT}>
@@ -64,13 +124,14 @@ function VocalJitterGraph({ data }: { data: number[] }) {
           return (
             <Path
               key={value}
-              d={`M ${paddingX} ${y} L ${GRAPH_WIDTH - paddingX} ${y}`}
+              // UPDATED: Grid lines start after the left padding
+              d={`M ${paddingLeft} ${y} L ${GRAPH_WIDTH - paddingRight} ${y}`}
               stroke="rgba(161, 140, 209, 0.1)"
               strokeWidth="1"
             />
           );
         })}
-        
+
         {/* Main line */}
         <Path
           d={pathData}
@@ -80,21 +141,9 @@ function VocalJitterGraph({ data }: { data: number[] }) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        
-        {/* Data points */}
-        {points.map((point, index) => (
-          <Circle
-            key={index}
-            cx={point.x}
-            cy={point.y}
-            r="4"
-            fill="#14b8a6"
-            opacity={index === points.length - 1 ? 1 : 0.3}
-          />
-        ))}
       </Svg>
-      
-      {/* Y-axis labels inside graph */}
+
+      {/* Y-axis labels */}
       <View style={styles.yAxisLabels}>
         {[3, 2, 1, 0].map((value) => (
           <Text key={value} style={styles.axisLabel}>
@@ -108,23 +157,31 @@ function VocalJitterGraph({ data }: { data: number[] }) {
 
 export default function HomeScreen() {
   const { riskAnalysis, profile } = useUserStore();
-  
-  // Generate mock data based on risk level
-  const jitterData = generateMockJitterData(riskAnalysis?.riskLevel || 'LOW');
-  const currentJitter = riskAnalysis?.vocalJitter || 0.5;
-  
-  // Mock cycle data
-  const daysUntilPeriod = 4;
-  const currentPhase = riskAnalysis?.estimatedPhase || 'Luteal';
-  
-  // Use consistent purple gradient for all risk levels
-  const gradient = ['#a18cd1', '#fbc2eb'];
-  
-  // Get time-based greeting
+  const { recordings, getAverageJitter, getLatestRecording } = useRecordingStore();
+  const { getCurrentCycleDay, getDaysUntilPeriod, getCurrentPhase, periodDays } = useCycleStore();
+
+  const latestRecording = getLatestRecording();
+  const averageJitter = getAverageJitter(30);
+  const currentJitter = latestRecording?.jitter ?? riskAnalysis?.vocalJitter ?? 0.5;
+
+  const { data: jitterData, dates } = useMemo(() => {
+    return generateJitterDataFromRecordings(recordings, riskAnalysis?.riskLevel || 'LOW');
+  }, [recordings, riskAnalysis?.riskLevel]);
+
+  const recordingDates = useMemo(() => {
+    return new Set(recordings.map(r => r.timestamp.split('T')[0]));
+  }, [recordings]);
+
+  const currentCycleDay = getCurrentCycleDay();
+  const daysUntilPeriod = getDaysUntilPeriod();
+  const currentPhase = getCurrentPhase();
+
+  const gradient: [string, string] = ['#a18cd1', '#fbc2eb'];
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     const userName = profile?.name || 'there';
-    
+
     if (hour < 12) {
       return `Good morning, ${userName}`;
     } else if (hour < 18) {
@@ -134,6 +191,8 @@ export default function HomeScreen() {
     }
   };
 
+  const jitterStatus = getJitterStatus(currentJitter);
+
   return (
     <LinearGradient colors={gradient} style={styles.container}>
       <ScrollView
@@ -141,7 +200,6 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <Animated.View entering={FadeInDown.duration(600)} style={styles.header}>
           <Text style={styles.greeting}>{getGreeting()}</Text>
           <Text style={styles.date}>
@@ -149,49 +207,130 @@ export default function HomeScreen() {
           </Text>
         </Animated.View>
 
-        {/* Hero Graph: Vocal Jitter */}
         <Animated.View entering={FadeInDown.duration(800).delay(200)} style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Vocal Jitter</Text>
-            <Text style={styles.cardSubtitle}>Last 30 Days</Text>
+            <Text style={styles.cardSubtitle}>
+              Last 30 Days • {recordings.length} recording{recordings.length !== 1 ? 's' : ''}
+            </Text>
           </View>
-          
+
           <View style={styles.currentValueContainer}>
-            <Text style={styles.currentValue}>{currentJitter.toFixed(2)}%</Text>
-            <Text style={styles.currentValueLabel}>Current</Text>
+            <Text style={[styles.currentValue, { color: getJitterStatusColor(jitterStatus) }]}>
+              {currentJitter.toFixed(3)}%
+            </Text>
+            <View style={[styles.statusBadge, { backgroundColor: getJitterStatusColor(jitterStatus) + '20' }]}>
+              <Text style={[styles.statusBadgeText, { color: getJitterStatusColor(jitterStatus) }]}>
+                {getJitterStatusLabel(jitterStatus)}
+              </Text>
+            </View>
           </View>
-          
-          <VocalJitterGraph data={jitterData} />
-          
-          <Text style={styles.graphHint}>
-            {currentJitter < 1 
-              ? '✓ Low and stable - Good hormonal balance' 
-              : currentJitter < 1.5 
-              ? '⚠ Moderate variation - Monitor trends' 
-              : '⚠ High and spiky - Consult healthcare provider'}
-          </Text>
+
+          <VocalJitterGraph data={jitterData} recordingDates={recordingDates} dates={dates} />
+
+          {recordings.length === 0 ? (
+            <Pressable
+              style={styles.recordCTA}
+              onPress={() => router.push('/(tabs)/record')}
+            >
+              <Text style={styles.recordCTAText}>Record your first voice sample</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{averageJitter.toFixed(3)}%</Text>
+                <Text style={styles.statLabel}>30-Day Avg</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{recordings.length}</Text>
+                <Text style={styles.statLabel}>Recordings</Text>
+              </View>
+            </View>
+          )}
         </Animated.View>
 
-        {/* Cycle Context Card */}
         <Animated.View entering={FadeInDown.duration(800).delay(400)} style={styles.card}>
-          <Text style={styles.cardTitle}>Cycle Context</Text>
-          
-          <View style={styles.cycleInfo}>
-            <View style={styles.cycleRow}>
-              <Text style={styles.cycleLabel}>Period in</Text>
-              <Text style={styles.cycleValue}>{daysUntilPeriod} Days</Text>
-            </View>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.cycleRow}>
-              <Text style={styles.cycleLabel}>Phase</Text>
-              <Text style={styles.cycleValue}>{currentPhase}</Text>
-            </View>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Cycle Context</Text>
+            {periodDays.length === 0 && (
+              <Text style={styles.cardSubtitle}>Start tracking your period</Text>
+            )}
           </View>
+
+          {periodDays.length > 0 ? (
+            <View style={styles.cycleInfo}>
+              <View style={styles.cycleRow}>
+                <Text style={styles.cycleLabel}>Cycle Day</Text>
+                <Text style={styles.cycleValue}>
+                  {currentCycleDay > 0 ? `Day ${currentCycleDay}` : '—'}
+                </Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.cycleRow}>
+                <Text style={styles.cycleLabel}>Next Period</Text>
+                <Text style={styles.cycleValue}>
+                  {daysUntilPeriod >= 0 ? `${daysUntilPeriod} Days` : '—'}
+                </Text>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.cycleRow}>
+                <Text style={styles.cycleLabel}>Phase</Text>
+                <View style={[styles.phaseBadge, { backgroundColor: PHASE_COLORS[currentPhase] + '20' }]}>
+                  <View style={[styles.phaseDot, { backgroundColor: PHASE_COLORS[currentPhase] }]} />
+                  <Text style={[styles.phaseText, { color: PHASE_COLORS[currentPhase] }]}>
+                    {PHASE_LABELS[currentPhase]}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <Pressable
+              style={styles.trackCTA}
+              onPress={() => router.push('/(tabs)/calendar')}
+            >
+              <Text style={styles.trackCTAText}>Log your period days</Text>
+              <Text style={styles.trackCTASubtext}>
+                Long press on calendar days to mark period
+              </Text>
+            </Pressable>
+          )}
         </Animated.View>
 
-        {/* Bottom spacing */}
+        {riskAnalysis && (
+          <Animated.View entering={FadeInDown.duration(800).delay(600)} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Risk Assessment</Text>
+              <View style={[styles.riskBadge, {
+                backgroundColor: riskAnalysis.riskLevel === 'LOW' ? '#4ECDC4' :
+                  riskAnalysis.riskLevel === 'MODERATE' ? '#FFB75E' : '#FF6B6B'
+              }]}>
+                <Text style={styles.riskBadgeText}>{riskAnalysis.riskLevel}</Text>
+              </View>
+            </View>
+
+            <View style={styles.riskScoreContainer}>
+              <Text style={styles.riskScore}>{riskAnalysis.riskScore}</Text>
+              <Text style={styles.riskScoreLabel}>/100</Text>
+            </View>
+
+            <Text style={styles.riskNarrative} numberOfLines={2}>
+              {riskAnalysis.narrative}
+            </Text>
+
+            <Pressable
+              style={styles.viewDetailsButton}
+              onPress={() => router.push('/(tabs)/profile')}
+            >
+              <Text style={styles.viewDetailsText}>View Full Report</Text>
+            </Pressable>
+          </Animated.View>
+        )}
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </LinearGradient>
@@ -207,7 +346,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 60,
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
   header: {
     paddingHorizontal: 20,
@@ -215,8 +354,8 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 32,
-    fontWeight: '700',
     fontFamily: 'Outfit',
+    fontWeight: '700',
     color: '#ffffff',
   },
   date: {
@@ -241,6 +380,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
   cardTitle: {
@@ -262,14 +404,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#14b8a6',
   },
-  currentValueLabel: {
+  statusBadge: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusBadgeText: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    fontWeight: '600',
   },
   graphContainer: {
     position: 'relative',
     marginBottom: 16,
+    alignSelf: 'center'
   },
   yAxisLabels: {
     position: 'absolute',
@@ -287,14 +435,46 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
   },
-  graphHint: {
-    fontSize: 14,
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(26, 11, 46, 0.1)',
+  },
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a0b2e',
+  },
+  statLabel: {
+    fontSize: 12,
     color: '#666',
-    textAlign: 'center',
-    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: 'rgba(26, 11, 46, 0.1)',
+  },
+  recordCTA: {
+    backgroundColor: '#a18cd1',
+    paddingVertical: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  recordCTAText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   cycleInfo: {
-    marginTop: 16,
+    marginTop: 8,
   },
   cycleRow: {
     flexDirection: 'row',
@@ -314,6 +494,81 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: 'rgba(26, 11, 46, 0.1)',
+  },
+  phaseBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  phaseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  phaseText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  trackCTA: {
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 20,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  trackCTAText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#a18cd1',
+  },
+  trackCTASubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  riskBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  riskBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  riskScoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  riskScore: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#1a0b2e',
+  },
+  riskScoreLabel: {
+    fontSize: 20,
+    color: '#666',
+    marginLeft: 4,
+  },
+  riskNarrative: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  viewDetailsButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  viewDetailsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#a18cd1',
   },
   bottomSpacer: {
     height: 20,
