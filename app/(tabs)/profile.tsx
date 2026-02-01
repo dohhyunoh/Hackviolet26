@@ -241,8 +241,9 @@ export default function ProfileScreen() {
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(600)} style={styles.appInfo}>
-          <Text style={styles.appName}>LUNAFLOW</Text>
-          <Text style={styles.appTagline}>Hackathon Build v1.0.0</Text>
+          <Text style={styles.appName}>CLARITY</Text>
+          <Text style={styles.appTagline}>Built by Women for Women's Health</Text>
+          <Text style={styles.appTagline}>v1.0.0</Text>
         </Animated.View>
       </ScrollView>
     </LinearGradient>

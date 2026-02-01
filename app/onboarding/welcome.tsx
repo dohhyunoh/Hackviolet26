@@ -26,7 +26,7 @@ export default function WelcomeScreen() {
   useEffect(() => {
     // 3. Sequence: Draw the stroke first (2s), then fade in the fill (800ms)
     strokeProgress.value = withTiming(1, { 
-      duration: 2000, 
+      duration: 5000, 
       easing: Easing.inOut(Easing.cubic) 
     });
     

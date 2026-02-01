@@ -348,12 +348,11 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 32,
     fontFamily: 'Outfit',
-    fontWeight: '700',
     color: '#ffffff',
   },
   date: {
     fontSize: 16,
-    fontFamily: 'ZillaSlab',
+    fontFamily: 'Zilla Slab',
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
   },

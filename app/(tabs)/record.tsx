@@ -1,26 +1,25 @@
-import { useState, useCallback, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Dimensions,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StabilityMeter } from '@/components/voice/StabilityMeter';
 import { VoiceRecorder } from '@/components/voice/VoiceRecorder';
 import { VoiceVisualizer } from '@/components/voice/VoiceVisualizer';
-import { StabilityMeter } from '@/components/voice/StabilityMeter';
 import { useRecordingStore } from '@/stores/recordingStore';
 import { useUserStore } from '@/stores/userStore';
 import {
-  stabilityToJitter,
   getJitterStatus,
   getJitterStatusColor,
-  getJitterStatusLabel,
+  getJitterStatusLabel
 } from '@/types/recording';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useMemo, useState } from 'react';
+import {
+  Dimensions,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -342,12 +341,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: '700',
+    fontFamily: 'Outfit',
     color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
+    fontFamily: 'Zilla Slab',
     color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
   },

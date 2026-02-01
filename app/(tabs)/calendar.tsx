@@ -1,6 +1,6 @@
 import { PHASE_COLORS, PHASE_LABELS, Symptom, SYMPTOM_LABELS, useCycleStore } from '@/stores/cycleStore';
-import { useRecordingStore } from '@/stores/recordingStore';
 import { useHealthMetricsStore } from '@/stores/healthMetricsStore';
+import { useRecordingStore } from '@/stores/recordingStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -206,8 +206,9 @@ function SymptomPicker({
             })}
           </View>
 
-          <Pressable style={styles.modalCloseButton} onPress={onClose}>
-            <Text style={styles.modalCloseText}>Done</Text>
+          {/* UPDATED: Big white button here as well */}
+          <Pressable style={styles.modalWhiteButton} onPress={onClose}>
+            <Text style={styles.modalWhiteButtonText}>Done</Text>
           </Pressable>
         </View>
       </View>
@@ -285,14 +286,10 @@ function HealthMetricsModal({
             </View>
           </View>
 
-          <View style={styles.modalButtons}>
-            <Pressable style={styles.modalSecondaryButton} onPress={onClose}>
-              <Text style={styles.modalSecondaryText}>Cancel</Text>
-            </Pressable>
-            <Pressable style={styles.modalCloseButton} onPress={handleSave}>
-              <Text style={styles.modalCloseText}>Save</Text>
-            </Pressable>
-          </View>
+          {/* CHANGED: Big white button for "Done" instead of Cancel/Save row */}
+          <Pressable style={styles.modalWhiteButton} onPress={handleSave}>
+            <Text style={styles.modalWhiteButtonText}>Done</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -670,12 +667,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontFamily: 'Outfit',
-    fontWeight: '700',
     color: '#ffffff',
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: 'ZillaSlab',
+    fontFamily: 'Zilla Slab',
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
   },
@@ -1104,5 +1100,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1a0b2e',
     fontWeight: '500',
+  },
+  // ADDED: New styles for the big white button
+  modalWhiteButton: {
+    backgroundColor: '#ffffff',
+    paddingVertical: 16,
+    borderRadius: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modalWhiteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a0b2e',
   },
 });
